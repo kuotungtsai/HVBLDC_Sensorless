@@ -1,0 +1,1 @@
+"../F28035_RAM_HVBLDC_Sensorless.CMD" "./DLOG4CHC.obj" "./DSP2803x_CodeStartBranch.obj" "./DSP2803x_CpuTimers.obj" "./DSP2803x_GlobalVariableDefs.obj" "./DSP2803x_I2C.obj" "./DSP2803x_usDelay.obj" "./HVBLDC_Sensorless-DevInit_F2803x.obj" "./HVBLDC_Sensorless.obj" "./i2c_gy80.obj" "D:/ti/controlSUITE/libs/math/IQmath/v15c/lib/IQmath.lib" -lrts2800_ml.lib 
