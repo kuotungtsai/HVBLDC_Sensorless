@@ -19,7 +19,7 @@ Description:	Primary system file for the Real Implementation of Sensorless
 
 #ifdef FLASH
 #pragma CODE_SECTION(MainISR,"ramfuncs");
-//#pragma CODE_SECTION(i2c_int1a_isr,"ramfuncs");
+#pragma CODE_SECTION(i2c_int1a_isr,"ramfuncs");
 void MemCopy();
 void InitFlash();
 #endif
@@ -218,20 +218,21 @@ struct I2CMSG I2cMsgIn1 = { I2C_MSGSTAT_SEND_NOSTOP,
 
 struct I2CMSG *CurrentMsgPtr;				// Used in interrupts
 
-double xg,yg,zg;//the x axis gravity data
+double g[3];//the x axis gravity data
 Uint16 virtualtimer = 0;
 Uint16 readcounter = 0x00;//for lower the repetition rate for read
 Uint16 device_intial_done_flag=0xFF;
 Uint16 I2CA_Read_fail=0x00;//for check whether device is connected of not
 Uint16 i2c_read_return=0xff;
-
+Uint16 i2c_isr_ticker=0;
 void main(void){
 
-	DeviceInit();	// Device Life support & GPIO
+
 	Uint16 Error;
 	Uint16 i;
 
 	CurrentMsgPtr = &I2cMsgOut1;
+	DeviceInit();	// Device Life support & GPIO
 // Only used if running from FLASH
 // Note that the variable FLASH is defined by the compiler
 
@@ -248,10 +249,10 @@ void main(void){
 	InitI2CGpio();
 
 
-// Tasks State-machine init
-	Alpha_State_Ptr = &A0;
-	A_Task_Ptr = &A1;
-	B_Task_Ptr = &B1;
+//// Tasks State-machine init
+//	Alpha_State_Ptr = &A0;
+//	A_Task_Ptr = &A1;
+//	B_Task_Ptr = &B1;
 
 	//EnableFlag =GpioDataRegs.GPADAT.bit.GPIO15;// Get value from Gpio, and Gpio value is control by physical switch
 
@@ -323,7 +324,7 @@ void main(void){
 
 // Enable CPU INT13 for TINT1:
 	IER |= M_INT13;
-
+//	IER=0x1081;
 // Enable global Interrupts and higher priority real-time debug events:
 	EINT;   // Enable Global interrupt INTM
 	ERTM;	// Enable Global realtime interrupt DBGM
@@ -394,7 +395,7 @@ void main(void){
 // IDLE loop. Just sit and loop forever:
 	for(;;)  //infinite loop
 	{
-		BackTicker++;
+//		BackTicker++;
 //		// State machine entry & exit point
 //		//===========================================================
 //		(*Alpha_State_Ptr)();	// jump to an Alpha state (A0,B0,...)
@@ -435,15 +436,16 @@ void main(void){
 			// Check incoming message status.
 			if (I2cMsgIn1.MsgStatus == I2C_MSGSTAT_SEND_NOSTOP) {
 				// EEPROM address setup portion
-				i2c_read_return=I2CA_ReadData(&I2cMsgIn1);
-				while (i2c_read_return != I2C_SUCCESS) {
+
+				while (I2CA_ReadData(&I2cMsgIn1) != I2C_SUCCESS) {
+					i2c_read_return=I2CA_ReadData(&I2cMsgIn1);
 					// Maybe setup an attempt counter to break an infinite while
 					// loop. The EEPROM will send back a NACK while it is performing
 					// a write operation. Even though the write communique is
 					// complete at this point, the EEPROM could still be busy
 					// programming the data. Therefore, multiple attempts are
 					// necessary.
-					I2CA_Read_fail=0x0F;
+					I2CA_Read_fail++;;
 				}
 				// Update current message pointer and message status
 				CurrentMsgPtr = &I2cMsgIn1;
@@ -467,25 +469,25 @@ void main(void){
 				I2cMsgIn1.MsgStatus = I2C_MSGSTAT_READ_BUSY;
 			}
 		}  // end of read section
-		//virtualtimer++;
+		virtualtimer++;
 		if (virtualtimer > 0xFFFE) {
 			if (I2cMsgIn1.MsgStatus == I2C_SUCCESS){
 						if(I2C_read_channel==X){
-							I2cMsgIn1.MemoryHighAddr=X_HIGH_ADDR;
-							I2cMsgIn1.MemoryLowAddr=X_LOW_ADDR;
-							zg =I2cMsgIn1.MsgBuffer[0] + (I2cMsgIn1.MsgBuffer[1] << 8);
+							I2cMsgIn1.MemoryHighAddr=Y_HIGH_ADDR;
+							I2cMsgIn1.MemoryLowAddr=Y_LOW_ADDR;
+							g[2] =I2cMsgIn1.MsgBuffer[0] + (I2cMsgIn1.MsgBuffer[1] << 8);//z-axis g data
 							I2C_read_channel++;
 							}
 							else if(I2C_read_channel==Y){
-								I2cMsgIn1.MemoryHighAddr=Y_HIGH_ADDR;
-								I2cMsgIn1.MemoryLowAddr=Y_LOW_ADDR;
-								xg =I2cMsgIn1.MsgBuffer[0] + (I2cMsgIn1.MsgBuffer[1] << 8);
+								I2cMsgIn1.MemoryHighAddr=Z_HIGH_ADDR;
+								I2cMsgIn1.MemoryLowAddr=Z_LOW_ADDR;
+								g[0] =I2cMsgIn1.MsgBuffer[0] + (I2cMsgIn1.MsgBuffer[1] << 8);//x-axis g data
 								I2C_read_channel++;
 							}
 							else{
-								I2cMsgIn1.MemoryHighAddr=Z_HIGH_ADDR;
-								I2cMsgIn1.MemoryLowAddr=Z_LOW_ADDR;
-								yg =I2cMsgIn1.MsgBuffer[0] + (I2cMsgIn1.MsgBuffer[1] << 8);
+								I2cMsgIn1.MemoryHighAddr=X_HIGH_ADDR;
+								I2cMsgIn1.MemoryLowAddr=X_LOW_ADDR;
+								g[1] =I2cMsgIn1.MsgBuffer[0] + (I2cMsgIn1.MsgBuffer[1] << 8);//y-axis g data
 								I2C_read_channel=0X00;
 							}
 			I2cMsgIn1.MsgStatus = I2C_MSGSTAT_SEND_NOSTOP;
@@ -496,7 +498,7 @@ void main(void){
 } //END MAIN CODE
 
 
-
+//
 //=================================================================================
 //	STATE-MACHINE SEQUENCING AND SYNCRONIZATION FOR SLOW BACKGROUND TASKS
 //=================================================================================
@@ -1540,7 +1542,7 @@ void ramp_initial(void)
 
 interrupt void i2c_int1a_isr(void)     // I2C-A
 {
-	virtualtimer++;
+	i2c_isr_ticker++;
 	Uint16 IntSource, i;
 
 	// Read interrupt source

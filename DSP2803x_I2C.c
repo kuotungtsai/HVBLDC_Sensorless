@@ -48,8 +48,8 @@ void InitI2CGpio()
 // This will enable the pullups for the specified pins.
 // Comment out other unwanted lines.
 
-	GpioCtrlRegs.GPAPUD.bit.GPIO28 = 0;    // Enable pull-up for GPIO28 (SDAA)
-	GpioCtrlRegs.GPAPUD.bit.GPIO29 = 0;	   // Enable pull-up for GPIO29 (SCLA)
+	GpioCtrlRegs.GPAPUD.bit.GPIO28 = 1;    // Enable pull-up for GPIO28 (SDAA)
+	GpioCtrlRegs.GPAPUD.bit.GPIO29 = 1;	   // Enable pull-up for GPIO29 (SCLA)
 
 //	GpioCtrlRegs.GPBPUD.bit.GPIO32 = 0;    // Enable pull-up for GPIO32 (SDAA)
 //	GpioCtrlRegs.GPBPUD.bit.GPIO33 = 0;	   // Enable pull-up for GPIO33 (SCLA)

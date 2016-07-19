@@ -17,14 +17,17 @@ cla_adc project for information on how to use and configure the CLA.
 // run address using the linker cmd file.
 #pragma CODE_SECTION(InitFlash, "ramfuncs");
 #define Device_cal (void   (*)(void))0x3D7C80
-
+void InitPll(Uint16 val, Uint16 divsel);
 void DeviceInit(void);
 void PieCntlInit(void);
 void PieVectTableInit(void);
 void WDogDisable(void);
 void PLLset(Uint16);
 void ISR_ILLEGAL(void);
-
+void DisableDog(void);
+void DSP28x_usDelay();
+#define CPU_CLOCK_SPEED      16.666L   // 10.000L for a 100MHz CPU clock speed
+#define DELAY_US(A)  DSP28x_usDelay(((((long double) A * 1000.0L) / (long double)CPU_CLOCK_SPEED) - 9.0L) / 5.0L)
 //--------------------------------------------------------------------
 //  Configure Device for target Application Here
 //--------------------------------------------------------------------
@@ -60,14 +63,14 @@ void DeviceInit(void)
 // 0x4 =  20	MHz		(4)
 // 0x3 =  15	MHz		(3)
 // 0x2 =  10	MHz		(2)
-
-	PLLset(0xC);	// choose from options above
-
+EALLOW;
+//	PLLset(0xC);	// choose from options above
+    InitPll(12,2);
 // Initialise interrupt controller and Vector Table
 // to defaults for now. Application ISR mapping done later.
 	PieCntlInit();		
 	PieVectTableInit();
-
+EDIS;
    EALLOW; // below registers are "protected", allow access.
 
 // LOW SPEED CLOCKS prescale register settings
@@ -132,7 +135,7 @@ void DeviceInit(void)
    SysCtrlRegs.PCLKCR0.bit.TBCLKSYNC = 1;   // Enable TBCLK
    //------------------------------------------------           
 
-                               
+
 //--------------------------------------------------------------------------------------
 // GPIO (GENERAL PURPOSE I/O) CONFIG
 //--------------------------------------------------------------------------------------
@@ -150,55 +153,55 @@ void DeviceInit(void)
 //--------------------------------------------------------------------------------------
 //  GPIO-00 - PIN FUNCTION = PWM1A
 	GpioCtrlRegs.GPAMUX1.bit.GPIO0 = 1;		// 0=GPIO,  1=EPWM1A,  2=Resv,  3=Resv
-//	GpioCtrlRegs.GPADIR.bit.GPIO0 = 1;		// 1=OUTput,  0=INput 
+//	GpioCtrlRegs.GPADIR.bit.GPIO0 = 1;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO0 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO0 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-01 - PIN FUNCTION = PWM1B
 	GpioCtrlRegs.GPAMUX1.bit.GPIO1 = 1;		// 0=GPIO,  1=EPWM1B,  2=Resv,  3=COMP1OUT
-//	GpioCtrlRegs.GPADIR.bit.GPIO1 = 1;		// 1=OUTput,  0=INput 
+//	GpioCtrlRegs.GPADIR.bit.GPIO1 = 1;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO1 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO1 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-02 - PIN FUNCTION = PWM2A
 	GpioCtrlRegs.GPAMUX1.bit.GPIO2 = 1;		// 0=GPIO,  1=EPWM2A,  2=Resv,  3=Resv
-//	GpioCtrlRegs.GPADIR.bit.GPIO2 = 0;		// 1=OUTput,  0=INput 
+//	GpioCtrlRegs.GPADIR.bit.GPIO2 = 0;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO2 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO2 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-03 - PIN FUNCTION = PWM2B
 	GpioCtrlRegs.GPAMUX1.bit.GPIO3 = 1;		// 0=GPIO,  1=EPWM2B,  2=SPISOMI-A,  3=COMP2OUT
-//	GpioCtrlRegs.GPADIR.bit.GPIO3 = 0;		// 1=OUTput,  0=INput 
+//	GpioCtrlRegs.GPADIR.bit.GPIO3 = 0;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO3 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO3 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-04 - PIN FUNCTION = PWM3A
 	GpioCtrlRegs.GPAMUX1.bit.GPIO4 = 1;		// 0=GPIO,  1=EPWM3A,  2=Resv,  3=Resv
-//	GpioCtrlRegs.GPADIR.bit.GPIO4 = 0;		// 1=OUTput,  0=INput 
+//	GpioCtrlRegs.GPADIR.bit.GPIO4 = 0;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO4 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO4 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-05 - PIN FUNCTION = PWM3B
 	GpioCtrlRegs.GPAMUX1.bit.GPIO5 = 1;		// 0=GPIO,  1=EPWM3B,  2=SPISIMO-A,  3=ECAP1
-//	GpioCtrlRegs.GPADIR.bit.GPIO5 = 0;		// 1=OUTput,  0=INput 
+//	GpioCtrlRegs.GPADIR.bit.GPIO5 = 0;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO5 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO5 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-06 - PIN FUNCTION = PWM4A
 	GpioCtrlRegs.GPAMUX1.bit.GPIO6 = 1;		// 0=GPIO,  1=EPWM4A,  2=SYNCI,  3=SYNCO
-//	GpioCtrlRegs.GPADIR.bit.GPIO6 = 0;		// 1=OUTput,  0=INput 
+//	GpioCtrlRegs.GPADIR.bit.GPIO6 = 0;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO6 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO6 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-07 - PIN FUNCTION = PWM4B
 	GpioCtrlRegs.GPAMUX1.bit.GPIO7 = 1;		// 0=GPIO,  1=EPWM4B,  2=SCIRX-A,  3=Resv
-//	GpioCtrlRegs.GPADIR.bit.GPIO7 = 0;		// 1=OUTput,  0=INput 
+//	GpioCtrlRegs.GPADIR.bit.GPIO7 = 0;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO7 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO7 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-08 - PIN FUNCTION = PWM5A*
 	GpioCtrlRegs.GPAMUX1.bit.GPIO8 = 1;		// 0=GPIO,  1=EPWM5A,  2=Resv,  3=ADCSOC-A
-//	GpioCtrlRegs.GPADIR.bit.GPIO8 = 0;		// 1=OUTput,  0=INput 
+//	GpioCtrlRegs.GPADIR.bit.GPIO8 = 0;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO8 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO8 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
@@ -210,19 +213,19 @@ void DeviceInit(void)
 //--------------------------------------------------------------------------------------
 //  GPIO-10 - PIN FUNCTION = PWM6A*
 	GpioCtrlRegs.GPAMUX1.bit.GPIO10 = 1;	// 0=GPIO,  1=EPWM6A,  2=Resv,  3=ADCSOC-B
-//	GpioCtrlRegs.GPADIR.bit.GPIO10 = 0;		// 1=OUTput,  0=INput 
+//	GpioCtrlRegs.GPADIR.bit.GPIO10 = 0;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO10 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO10 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-11 - PIN FUNCTION = PWM6B*
 	GpioCtrlRegs.GPAMUX1.bit.GPIO11 = 1;	// 0=GPIO,  1=EPWM6B,  2=LINRX-A,  3=Resv
-//	GpioCtrlRegs.GPADIR.bit.GPIO11 = 0;		// 1=OUTput,  0=INput 
+//	GpioCtrlRegs.GPADIR.bit.GPIO11 = 0;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO11 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO11 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-12 - PIN FUNCTION = TZ1
 	GpioCtrlRegs.GPAMUX1.bit.GPIO12 = 1;	// 0=GPIO,  1=TZ1,  2=SCITX-A,  3=SPISIMO-B
-//	GpioCtrlRegs.GPADIR.bit.GPIO12 = 0;		// 1=OUTput,  0=INput 
+//	GpioCtrlRegs.GPADIR.bit.GPIO12 = 0;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO12 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO12 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
@@ -247,25 +250,25 @@ void DeviceInit(void)
 //--------------------------------------------------------------------------------------
 //  GPIO-16 - PIN FUNCTION = SPISIMO-A
 	GpioCtrlRegs.GPAMUX2.bit.GPIO16 = 1;	// 0=GPIO,  1=SPISIMO-A,  2=Resv,  3=TZ2
-//	GpioCtrlRegs.GPADIR.bit.GPIO16 = 0;		// 1=OUTput,  0=INput 
+//	GpioCtrlRegs.GPADIR.bit.GPIO16 = 0;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO16 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO16 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-17 - PIN FUNCTION = SPISOMI-A
 	GpioCtrlRegs.GPAMUX2.bit.GPIO17 = 1;	// 0=GPIO,  1=SPISOMI-A,  2=Resv,  3=TZ3
-//	GpioCtrlRegs.GPADIR.bit.GPIO17 = 0;		// 1=OUTput,  0=INput 
+//	GpioCtrlRegs.GPADIR.bit.GPIO17 = 0;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO17 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO17 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-18 - PIN FUNCTION = SPICLK-A
 	GpioCtrlRegs.GPAMUX2.bit.GPIO18 = 1;	// 0=GPIO,  1=SPICLK-A,  2=LINTX-A,  3=XCLKOUT
-//	GpioCtrlRegs.GPADIR.bit.GPIO18 = 1;		// 1=OUTput,  0=INput 
+//	GpioCtrlRegs.GPADIR.bit.GPIO18 = 1;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO18 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO18 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-19 - PIN FUNCTION = SPISTE-A
 	GpioCtrlRegs.GPAMUX2.bit.GPIO19 = 1;	// 0=GPIO,  1=SPISTE-A,  2=LINRX-A,  3=ECAP1
-//	GpioCtrlRegs.GPADIR.bit.GPIO19 = 0;		// 1=OUTput,  0=INput 
+//	GpioCtrlRegs.GPADIR.bit.GPIO19 = 0;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO19 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO19 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
@@ -295,25 +298,25 @@ void DeviceInit(void)
 //--------------------------------------------------------------------------------------
 //  GPIO-24 - PIN FUNCTION = Step3B*(B1+)*
 	GpioCtrlRegs.GPAMUX2.bit.GPIO24 = 0;	// 0=GPIO,  1=ECAP1,  2=Resv,  3=SPISIMO-B
-	GpioCtrlRegs.GPADIR.bit.GPIO24 = 0;		// 1=OUTput,  0=INput 
+	GpioCtrlRegs.GPADIR.bit.GPIO24 = 0;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO24 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO24 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-25 - PIN FUNCTION = Hall2
 	GpioCtrlRegs.GPAMUX2.bit.GPIO25 = 0;	// 0=GPIO,  1=Resv,  2=Resv,  3=SPISOMI-B
-	GpioCtrlRegs.GPADIR.bit.GPIO25 = 0;		// 1=OUTput,  0=INput 
+	GpioCtrlRegs.GPADIR.bit.GPIO25 = 0;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO25 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO25 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-26 - PIN FUNCTION = Hall3
 	GpioCtrlRegs.GPAMUX2.bit.GPIO26 = 0;	// 0=GPIO,  1=Resv,  2=Resv,  3=SPICLK-B
-	GpioCtrlRegs.GPADIR.bit.GPIO26 = 0;		// 1=OUTput,  0=INput 
+	GpioCtrlRegs.GPADIR.bit.GPIO26 = 0;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO26 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO26 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-27 - PIN FUNCTION = --Spare--
 	GpioCtrlRegs.GPAMUX2.bit.GPIO27 = 0;	// 0=GPIO,  1=Resv,  2=Resv,  3=SPISTE-B
-	GpioCtrlRegs.GPADIR.bit.GPIO27 = 0;		// 1=OUTput,  0=INput 
+	GpioCtrlRegs.GPADIR.bit.GPIO27 = 0;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO27 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO27 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
@@ -331,73 +334,73 @@ void DeviceInit(void)
 //--------------------------------------------------------------------------------------
 //  GPIO-30 - PIN FUNCTION = CANRX-A
 	GpioCtrlRegs.GPAMUX2.bit.GPIO30 = 1;	// 0=GPIO,  1=CANRX-A,  2=Resv,  3=Resv
-	GpioCtrlRegs.GPADIR.bit.GPIO30 = 0;		// 1=OUTput,  0=INput 
+	GpioCtrlRegs.GPADIR.bit.GPIO30 = 0;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO30 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO30 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-31 - PIN FUNCTION = CANTX-A
 	GpioCtrlRegs.GPAMUX2.bit.GPIO31 = 1;	// 0=GPIO,  1=CANTX-A,  2=Resv,  3=Resv
-	GpioCtrlRegs.GPADIR.bit.GPIO31 = 1;		// 1=OUTput,  0=INput 
+	GpioCtrlRegs.GPADIR.bit.GPIO31 = 1;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPACLEAR.bit.GPIO31 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPASET.bit.GPIO31 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------
 //  GPIO-32 - PIN FUNCTION = I2CSDA-A
-	GpioCtrlRegs.GPBMUX1.bit.GPIO32 = 1;	// 0=GPIO,  1=I2CSDA-A,  2=SYNCI,  3=ADCSOCA
-//	GpioCtrlRegs.GPBDIR.bit.GPIO32 = 1;		// 1=OUTput,  0=INput 
+	GpioCtrlRegs.GPBMUX1.bit.GPIO32 = 0;	// 0=GPIO,  1=I2CSDA-A,  2=SYNCI,  3=ADCSOCA
+//	GpioCtrlRegs.GPBDIR.bit.GPIO32 = 1;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPBCLEAR.bit.GPIO32 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPBSET.bit.GPIO32 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-33 - PIN FUNCTION = I2CSCL-A
-	GpioCtrlRegs.GPBMUX1.bit.GPIO33 = 1;	// 0=GPIO,  1=I2CSCL-A,  2=SYNCO,  3=ADCSOCB
-//	GpioCtrlRegs.GPBDIR.bit.GPIO33 = 1;		// 1=OUTput,  0=INput 
+	GpioCtrlRegs.GPBMUX1.bit.GPIO33 = 0;	// 0=GPIO,  1=I2CSCL-A,  2=SYNCO,  3=ADCSOCB
+//	GpioCtrlRegs.GPBDIR.bit.GPIO33 = 1;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPBCLEAR.bit.GPIO33 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPBSET.bit.GPIO33 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-34 - PIN FUNCTION = I2C-WP //LED3 on controlCARD
 	GpioCtrlRegs.GPBMUX1.bit.GPIO34 = 0;	// 0=GPIO,  1=Resv,  2=Resv,  3=Resv
-	GpioCtrlRegs.GPBDIR.bit.GPIO34 = 1;		// 1=OUTput,  0=INput 
+	GpioCtrlRegs.GPBDIR.bit.GPIO34 = 1;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPBCLEAR.bit.GPIO34 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPBSET.bit.GPIO34 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------
 // GPIO 35-38 are defaulted to JTAG usage, and are not shown here to enforce JTAG debug
-// usage. 
+// usage.
 //--------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------
 //  GPIO-39 - PIN FUNCTION = GPIO
 	GpioCtrlRegs.GPBMUX1.bit.GPIO39 = 0;	// 0=GPIO,  1=Resv,  2=Resv,  3=Resv
-	GpioCtrlRegs.GPBDIR.bit.GPIO39 = 1;		// 1=OUTput,  0=INput 
+	GpioCtrlRegs.GPBDIR.bit.GPIO39 = 1;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPBCLEAR.bit.GPIO39 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPBSET.bit.GPIO39 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-40 - PIN FUNCTION = EPWM7A
 	GpioCtrlRegs.GPBMUX1.bit.GPIO40 = 1;	// 0=GPIO,  1=EPWM7A,  2=Resv,  3=Resv
-//	GpioCtrlRegs.GPBDIR.bit.GPIO40 = 0;		// 1=OUTput,  0=INput 
+//	GpioCtrlRegs.GPBDIR.bit.GPIO40 = 0;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPBCLEAR.bit.GPIO40 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPBSET.bit.GPIO40 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-41 - PIN FUNCTION = EPWM7B
 	GpioCtrlRegs.GPBMUX1.bit.GPIO41 = 1;	// 0=GPIO,  1=EPWM7B,  2=Resv,  3=Resv
-//	GpioCtrlRegs.GPBDIR.bit.GPIO41 = 1;		// 1=OUTput,  0=INput 
+//	GpioCtrlRegs.GPBDIR.bit.GPIO41 = 1;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPBCLEAR.bit.GPIO41 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPBSET.bit.GPIO41 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-42 - PIN FUNCTION = LED2
 	GpioCtrlRegs.GPBMUX1.bit.GPIO42 = 0;	// 0=GPIO,  1=Resv,  2=Resv,  3=COMP1OUT
-	GpioCtrlRegs.GPBDIR.bit.GPIO42 = 1;		// 1=OUTput,  0=INput 
+	GpioCtrlRegs.GPBDIR.bit.GPIO42 = 1;		// 1=OUTput,  0=INput
 	GpioDataRegs.GPBCLEAR.bit.GPIO42 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPBSET.bit.GPIO42 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-43 - PIN FUNCTION = --Spare--
 	GpioCtrlRegs.GPBMUX1.bit.GPIO43 = 0;	// 0=GPIO,  1=Resv,  2=Resv,  3=COMP2OUT
-	GpioCtrlRegs.GPBDIR.bit.GPIO43 = 0;		// 1=OUTput,  0=INput 
+	GpioCtrlRegs.GPBDIR.bit.GPIO43 = 0;		// 1=OUTput,  0=INput
 //	GpioDataRegs.GPBCLEAR.bit.GPIO43 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPBSET.bit.GPIO43 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
 //  GPIO-44 - PIN FUNCTION = LED1
 	GpioCtrlRegs.GPBMUX1.bit.GPIO44 = 0;	// 0=GPIO,  1=Resv,  2=Resv,  3=Resv
-	GpioCtrlRegs.GPBDIR.bit.GPIO44 = 1;		// 1=OUTput,  0=INput 
+	GpioCtrlRegs.GPBDIR.bit.GPIO44 = 1;		// 1=OUTput,  0=INput
 	GpioDataRegs.GPBCLEAR.bit.GPIO44 = 1;	// uncomment if --> Set Low initially
 //	GpioDataRegs.GPBSET.bit.GPIO44 = 1;		// uncomment if --> Set High initially
 //--------------------------------------------------------------------------------------
@@ -617,7 +620,102 @@ void MemCopy(Uint16 *SourceAddr, Uint16* SourceEndAddr, Uint16* DestAddr)
     }
     return;
 }
-	
+
+void InitPll(Uint16 val, Uint16 divsel)
+{
+   volatile Uint16 iVol;
+
+   // Make sure the PLL is not running in limp mode
+   if (SysCtrlRegs.PLLSTS.bit.MCLKSTS != 0)
+   {
+      EALLOW;
+      // OSCCLKSRC1 failure detected. PLL running in limp mode.
+      // Re-enable missing clock logic.
+      SysCtrlRegs.PLLSTS.bit.MCLKCLR = 1;
+      EDIS;
+      // Replace this line with a call to an appropriate
+      // SystemShutdown(); function.
+      __asm("        ESTOP0");     // Uncomment for debugging purposes
+   }
+
+   // DIVSEL MUST be 0 before PLLCR can be changed from
+   // 0x0000. It is set to 0 by an external reset XRSn
+   // This puts us in 1/4
+   if (SysCtrlRegs.PLLSTS.bit.DIVSEL != 0)
+   {
+       EALLOW;
+       SysCtrlRegs.PLLSTS.bit.DIVSEL = 0;
+       EDIS;
+   }
+
+   // Change the PLLCR
+   if (SysCtrlRegs.PLLCR.bit.DIV != val)
+   {
+
+      EALLOW;
+      // Before setting PLLCR turn off missing clock detect logic
+      SysCtrlRegs.PLLSTS.bit.MCLKOFF = 1;
+      SysCtrlRegs.PLLCR.bit.DIV = val;
+      EDIS;
+
+      // Optional: Wait for PLL to lock.
+      // During this time the CPU will switch to OSCCLK/2 until
+      // the PLL is stable.  Once the PLL is stable the CPU will
+      // switch to the new PLL value.
+      //
+      // This time-to-lock is monitored by a PLL lock counter.
+      //
+      // Code is not required to sit and wait for the PLL to lock.
+      // However, if the code does anything that is timing critical,
+      // and requires the correct clock be locked, then it is best to
+      // wait until this switching has completed.
+
+      // Wait for the PLL lock bit to be set.
+
+      // The watchdog should be disabled before this loop, or fed within
+      // the loop via ServiceDog().
+
+      // Uncomment to disable the watchdog
+      DisableDog();
+
+      while(SysCtrlRegs.PLLSTS.bit.PLLLOCKS != 1)
+      {
+          // Uncomment to service the watchdog
+          // ServiceDog();
+      }
+
+      EALLOW;
+      SysCtrlRegs.PLLSTS.bit.MCLKOFF = 0;
+      EDIS;
+    }
+
+    // If switching to 1/2
+    if((divsel == 1)||(divsel == 2))
+    {
+        EALLOW;
+        SysCtrlRegs.PLLSTS.bit.DIVSEL = divsel;
+        EDIS;
+    }
+
+    // If switching to 1/1
+    // * First go to 1/2 and let the power settle
+    //   The time required will depend on the system, this is only an example
+    // * Then switch to 1/1
+    if(divsel == 3)
+    {
+        EALLOW;
+        SysCtrlRegs.PLLSTS.bit.DIVSEL = 2;
+        DELAY_US(50L);
+        SysCtrlRegs.PLLSTS.bit.DIVSEL = 3;
+        EDIS;
+    }
+}
+void DisableDog(void)
+{
+    EALLOW;
+    SysCtrlRegs.WDCR= 0x0068;
+    EDIS;
+}
 //===========================================================================
 // End of file.
 //===========================================================================

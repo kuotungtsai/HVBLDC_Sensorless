@@ -51,7 +51,7 @@ MEMORY
 */
 
 PAGE 0:
-	progRAM	    : origin = 0x008000, length = 0x002000 /* on-chip RAM (L0-L2)*/
+	progRAM	    : origin = 0x008000, length = 0x001800 /* on-chip RAM (L0-L3)*/
 	OTP         : origin = 0x3D7800, length = 0x000400     /* on-chip OTP */
 	FLASHH      : origin = 0x3E8000, length = 0x002000     /* on-chip FLASH */
 	FLASHG      : origin = 0x3EA000, length = 0x002000     /* on-chip FLASH */
@@ -76,7 +76,7 @@ PAGE 1 :
 	BOOT_RSVD   : origin = 0x000000, length = 0x000050     /* Part of M0, BOOT rom will use this for stack */
 	RAMM0       : origin = 0x000050, length = 0x0003B0     /* on-chip RAM block M0 */
    	RAMM1       : origin = 0x000400, length = 0x000400     /* on-chip RAM block M1 */
-	dataRAM	    : origin = 0x009000, length = 0x001000     /* data RAM (L3) */
+//	dataRAM	    : origin = 0x009000, length = 0x001000     /* data RAM (L3) */
 	FLASHB      : origin = 0x3F4000, length = 0x002000     /* on-chip FLASH */
 
 	CLA_CPU_MSGRAM  : origin = 0x001480, length = 0x000080 /* CLA-R/W, CPU-R message RAM */
@@ -104,8 +104,8 @@ SECTIONS
    
    /* Allocate uninitalized data sections: */
    .stack            : > RAMM0,      PAGE = 1
-   .ebss             : > dataRAM,    PAGE = 1
-   .esysmem          : > dataRAM,      PAGE = 1
+   .ebss             : > RAMM1,    PAGE = 1
+   .esysmem          : > RAMM1,      PAGE = 1
 
    /* Initalized sections go in Flash */
    /* For SDFlash to program these, they must be allocated to page 0 */
@@ -156,11 +156,11 @@ SECTIONS
 
 }
     
-       
+/*
 SECTIONS
 {
 	DLOG: > dataRAM,PAGE=1
 }
-
+*/
 
  

@@ -2,7 +2,7 @@
 
 void I2CA_Init(void) {
 	// Initialize I2C
-	I2caRegs.I2CSAR = 0x0050;		// Slave address - EEPROM control code
+	I2caRegs.I2CSAR = 0x0053;		// Slave address - EEPROM control code
 
 	I2caRegs.I2CPSC.all = 23;		  // Prescaler - need 7-12 Mhz on module clk
 	I2caRegs.I2CCLKL = 10;			// NOTE: must be non zero
