@@ -116,7 +116,7 @@ Uint32 RampDelay = 20;
 
 _iq SpeedRef1=_IQ(0.4);
 _iq SpeedRef2=_IQ(0.4);
-_iq SpeedRef=_IQ(0.3);
+//_iq SpeedRef=_IQ(0.3);
 
 //int16 DlogCh1 = 0;
 //int16 DlogCh2 = 0;
@@ -362,6 +362,8 @@ void main(void){
 	 ChSel[5]=2;	// ChSelect: ADC A2-> Motor1 Phase A Voltage
 	 ChSel[6]=1;	// ChSelect: ADC A1-> Motor1 Phase B Voltage
 	 ChSel[7]=0;	// ChSelect: ADC A0-> Motor1 Phase C Voltage
+
+	 ChSel[10]=5;  // ChSelect: ADC A5-> SPEEDREF
 //-------------------------------------------------------------------------
 
 	 ADC_MACRO_INIT(ChSel,TrigSel,ACQPS)
@@ -745,9 +747,9 @@ interrupt void MainISR(void)
     	rmp3_2.Ramp3DoneFlag=0;
     	CmtnPeriodSetpt = 0x00000400;
 
-//		SpeedRef1=_IQ(0.3);
-//		SpeedRef2=_IQ(0.3);
-		SpeedRef=_IQ(0.3);
+		SpeedRef1=_IQ(0.3);
+		SpeedRef2=_IQ(0.3);
+//		SpeedRef=_IQ(0.3);
 		SpeedLoopFlag1=FALSE;
 		SpeedLoopFlag2=FALSE;
 		mod1.Counter = 0;
@@ -782,7 +784,8 @@ interrupt void MainISR(void)
     {
 
 
-	   //SpeedRef1=_IQ(0.1)+_IQ12toIQ(AdcResult.ADCRESULT10);
+	   SpeedRef1=_IQsat(_IQ12toIQ(AdcResult.ADCRESULT10),_IQ(0.99),_IQ(0.1));//_IQ(0.1)+_IQ12toIQ(AdcResult.ADCRESULT10)+_IQ(0.1);
+	   SpeedRef2=_IQsat(_IQ12toIQ(AdcResult.ADCRESULT10),_IQ(0.99),_IQ(0.1));//_IQ(0.1)+_IQ12toIQ(AdcResult.ADCRESULT10)+_IQ(0.1);
 	   //DFuncDesired1=_IQ15(0.1)+(AdcResult.ADCRESULT10<<3);//use external variable resistor control BLDC1
 	   //DFuncDesired2=AdcResult.ADCRESULT11<<3;//use external variable resistor control BLDC2
 
@@ -1213,10 +1216,10 @@ interrupt void MainISR(void)
 // ------------------------------------------------------------------------------
 //    Connect inputs of the RMP module and call the Ramp control macro.
 // ------------------------------------------------------------------------------
-      rc1.TargetValue = SpeedRef;
+      rc1.TargetValue = SpeedRef1;
       RC_MACRO(rc1)
 
-      rc2.TargetValue = SpeedRef;
+      rc2.TargetValue = SpeedRef2;
       RC_MACRO(rc2)
 
 // ------------------------------------------------------------------------------
@@ -1427,10 +1430,10 @@ interrupt void DebounceISR(void)
 			BLDC_decelerateTicker++;
 			if(BLDC_decelerateTicker>1000)//the SpeedRef will decendance every 1 sec
 			{
-				if(SpeedRef>0.01)
+				if(SpeedRef1>0.01)
 				{
-				SpeedRef=SpeedRef-_IQ(0.02);
-				SpeedRef=SpeedRef-_IQ(0.02);
+				SpeedRef1=SpeedRef1-_IQ(0.02);
+				SpeedRef2=SpeedRef2-_IQ(0.02);
 				BLDC_decelerateTicker=0;
 				}
 				else
