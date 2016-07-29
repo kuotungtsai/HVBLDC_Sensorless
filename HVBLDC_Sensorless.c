@@ -29,9 +29,13 @@ interrupt void MainISR(void);
 void DeviceInit();
 void ramp_initial(void);
 
-
+#if (inter_select==debounce)
 interrupt void DebounceISR(void);
+#endif
 
+#if (inter_select==RC_control)
+interrupt void RC_controlISR(void);
+#endif
 // State Machine function prototypes
 //------------------------------------
 // Alpha states
@@ -298,7 +302,13 @@ void main(void){
 	EALLOW;	// This is needed to write to EALLOW protected registers
 	PieVectTable.I2CINT1A = &i2c_int1a_isr;
 	PieVectTable.TINT0 = &MainISR;
-	PieVectTable.TINT1 = &DebounceISR;
+	#if(inter_sellect==debounce)
+		PieVectTable.TINT1 = &DebounceISR;
+	#endif
+
+	#if (inter_select==RC_control)
+		PieVectTable.TINT1 = &RC_controlISR;
+	#endif
 
 	EDIS;   // This is needed to disable write to EALLOW protected registers
 
@@ -1384,6 +1394,7 @@ interrupt void MainISR(void)
 
 }// ISR Ends Here
 
+#if(inter_sellect==debounce)
 /*------the debounceISR is for switch judge, period 1ms-----*/
 interrupt void DebounceISR(void)
 {
@@ -1452,6 +1463,20 @@ interrupt void DebounceISR(void)
 
     PieCtrlRegs.PIEACK.all = PIEACK_GROUP3;
 }//end of debounceISR
+#endif
+
+#if (inter_select==RC_control)
+/*
+ this isr is for detect the lengh of pwn signal from RC control
+ there should be 5 channel
+
+ */
+interrupt void RC_controlISR(void)
+{
+
+    PieCtrlRegs.PIEACK.all = PIEACK_GROUP3;
+}//end of rc control pwm detect
+#endif
 
 void ramp_initial(void)
 {

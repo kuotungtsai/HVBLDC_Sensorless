@@ -20,6 +20,14 @@ This line sets the BUILDLEVEL to one of the available choices.
 ------------------------------------------------------------------------------*/
 #define   BUILDLEVEL LEVEL6
 
+/*following is toggle the interrupt function of debounce or RC control pwm detect*/
+#define RC_control 1
+#define debounce 2
+/*------------------------------------------------------------------------------
+This line sets the interrupt select to one of the available choices.
+------------------------------------------------------------------------------*/
+#define   inter_select RC_control
+
 
 #ifndef BUILDLEVEL    
 #error  Critical: BUILDLEVEL must be defined !!
