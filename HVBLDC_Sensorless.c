@@ -180,6 +180,12 @@ SPEED_MEAS_CAP speed2 = SPEED_MEAS_CAP_DEFAULTS;
 // Create an instance of DATALOG Module
 //DLOG_4CH dlog = DLOG_4CH_DEFAULTS;
 
+//Radio control pwm macro
+RCCtrl ThrustStick=RCCtrl_DEFAULTS;
+RCCtrl RollStick=RCCtrl_DEFAULTS;
+RCCtrl YawStick=RCCtrl_DEFAULTS;
+RCCtrl PitchStick=RCCtrl_DEFAULTS;
+RCCtrl AutoStick=RCCtrl_DEFAULTS;
 
 void I2CA_Init(void);
 void InitI2CGpio(void);
@@ -276,7 +282,6 @@ void main(void){
 // Initialize all the Device Peripherals:
 // This function is found in DSP280x_CpuTimers.c
    InitCpuTimers();
-
 // Configure CPU-Timer 0 to interrupt every ISR Period:
 // 60MHz CPU Freq, ISR Period (in uSeconds)
 // This function is found in DSP280x_CpuTimers.c
@@ -1465,15 +1470,20 @@ interrupt void DebounceISR(void)
 }//end of debounceISR
 #endif
 
+
 #if (inter_select==RC_control)
 /*
  this isr is for detect the lengh of pwn signal from RC control
  there should be 5 channel
-
  */
 interrupt void RC_controlISR(void)
 {
 
+	RCONTROL_MACRO(GPIO16,ThrustStick)
+	RCONTROL_MACRO(GPIO17,RollStick)
+	RCONTROL_MACRO(GPIO18,YawStick)
+	RCONTROL_MACRO(GPIO19,PitchStick)
+	RCONTROL_MACRO(GPIO20,AutoStick)
     PieCtrlRegs.PIEACK.all = PIEACK_GROUP3;
 }//end of rc control pwm detect
 #endif
