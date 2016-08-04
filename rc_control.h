@@ -32,14 +32,12 @@ Default initalizer for the RCCtrl object.
 	RC_CONTROL Macro Definition
 ----------------------------------------------------*/
 
-#define RCONTROL_MACRO(pin,v)						\
-	v.PWM_Status=GpioDataRegs.GPADAT.bit.pin;		\
-	if(v.PWM_Status==1)		/*if gpio is high*/		\
-	v.Counter+=1;									\
-	else		            /*if gpio is low*/      \
-	{											    \
-		v.PWM_width=v.Counter;						\
-		v.Counter=0;								\
-	}
-
+#define RCONTROL_MACRO(pin,v)												\
+	v.PWM_Status=0x03&((v.PWM_Status<<1)|GpioDataRegs.GPADAT.bit.pin);		\
+	if(v.PWM_Status==0x0)		/*if gpio is high*/							\
+		v.Counter=0;														\
+	else if(v.PWM_Status==0x03)		/*if gpio is high*/							\
+		v.Counter+=1;															\
+	else if(v.PWM_Status==0x02)		            /*if gpio is low*/    		\
+		v.PWM_width=v.Counter;
 #endif // __RC_CNT_H__

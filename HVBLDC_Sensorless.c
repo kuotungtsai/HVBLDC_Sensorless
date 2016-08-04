@@ -85,7 +85,7 @@ Uint32 DebounceIsrTicker = 0;
 Uint32 CtrlSwitchRemainTime=0;
 Uint32 BLDC_decelerateTicker=0;//this ticker is for decelerate
 Uint32 TestProbe=0;
-
+Uint16 rc_isr_ticker=0;
 Uint32 VirtualTimer = 0;
 Uint16 SpeedLoopFlag1 = FALSE;
 Uint16 SpeedLoopFlag2 = FALSE;
@@ -289,8 +289,8 @@ void main(void){
    StartCpuTimer0();
 
 // Configure CPU-Timer 1,2 for background loops
-   ConfigCpuTimer(&CpuTimer1, 60, 1000);
-   ConfigCpuTimer(&CpuTimer2, 60, 50000);
+   ConfigCpuTimer(&CpuTimer1, 60,30);
+   ConfigCpuTimer(&CpuTimer2, 60, 5000);
    StartCpuTimer1();
    StartCpuTimer2();
 
@@ -1391,8 +1391,6 @@ interrupt void MainISR(void)
 	VirtualTimer &= 0x00007FFF;
    }
 
-
-
 // Acknowledge interrupt to recieve more interrupts from PIE group 1
 	PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 
@@ -1478,6 +1476,7 @@ interrupt void DebounceISR(void)
  */
 interrupt void RC_controlISR(void)
 {
+		rc_isr_ticker++;
 
 	RCONTROL_MACRO(GPIO16,ThrustStick)
 	RCONTROL_MACRO(GPIO17,RollStick)
