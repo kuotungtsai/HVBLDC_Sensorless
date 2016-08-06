@@ -21,10 +21,10 @@ Next, Include project specific include files.
 #include "mod6_cnt.h"       	// Include header for the MOD6CNT object
 #include "speed_pr.h"           // Include header for the SPEED_MEAS_REV object
 #include "rmp_cntl.h"       	// Include header for the RMPCNTL object  
-
 #include "mod6_cnt_inv.h"      //include header for inverse mod6 cmtn********************
 #include "com_trig_inv.h"    //include header of modified back-EMF sensing cmtn MACRO************
 #include "impulse_inv.h"
+#include "rc_control.h"
 //#include "DSP2803x_Examples.h"   // DSP2803x Examples Include File
 
 #if (DSP2803x_DEVICE_H==1)

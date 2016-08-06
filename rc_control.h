@@ -21,12 +21,13 @@ File name:    RC_CONTROL.H
 typedef struct{Uint16 PWM_Status;
 			   Uint16 PWM_width;
 			   Uint16 Counter;
+			   _iq   duty;
 			} RCCtrl;
 
 /*-----------------------------------------------------------------------------
 Default initalizer for the RCCtrl object.
 -----------------------------------------------------------------------------*/
-#define RCCtrl_DEFAULTS {0,0,0}
+#define RCCtrl_DEFAULTS {0,40,0,0}
 
 /*---------------------------------------------------
 	RC_CONTROL Macro Definition
@@ -39,5 +40,8 @@ Default initalizer for the RCCtrl object.
 	else if(v.PWM_Status==0x03)		/*if gpio is high*/							\
 		v.Counter+=1;															\
 	else if(v.PWM_Status==0x02)		            /*if gpio is low*/    		\
-		v.PWM_width=v.Counter;
+		{v.PWM_width=v.Counter;												\
+		v.duty=_IQ((v.PWM_width-43)*0.028);      /*43-78*/     \
+		}\
+
 #endif // __RC_CNT_H__
