@@ -20,14 +20,6 @@ This line sets the BUILDLEVEL to one of the available choices.
 ------------------------------------------------------------------------------*/
 #define   BUILDLEVEL LEVEL6
 
-/*following is toggle the interrupt function of debounce or RC control pwm detect*/
-#define RC_control 1
-#define debounce 2
-/*------------------------------------------------------------------------------
-This line sets the interrupt select to one of the available choices.
-------------------------------------------------------------------------------*/
-#define   inter_select RC_control
-
 
 #ifndef BUILDLEVEL    
 #error  Critical: BUILDLEVEL must be defined !!
@@ -72,7 +64,7 @@ This line sets the interrupt select to one of the available choices.
 #define BASE_CURRENT    10            // Base peak phase current (amp)
 #define BASE_TORQUE     		      // Base torque (N.m)
 #define BASE_FLUX              		  // Base flux linkage (volt.sec/rad)
-#define BASE_FREQ      	934           // Base electrical frequency (Hz) for 57bl100 100, for 120w motor is 200
-									// 934 at pole is 14, the base rpm will be 8005
+#define BASE_FREQ      	700           // Base electrical frequency (Hz) for 57bl100 100, for 120w motor is 200
+
 #endif
 

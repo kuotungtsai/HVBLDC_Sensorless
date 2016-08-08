@@ -13,7 +13,6 @@ LIB_SRCS += \
 D:/ti/controlSUITE/libs/math/IQmath/v15c/lib/IQmath.lib 
 
 ASM_SRCS += \
-../DLOG4CHC.asm \
 D:/ti/controlSUITE/device_support/f2803x/v121/DSP2803x_common/source/DSP2803x_CodeStartBranch.asm \
 ../DSP2803x_usDelay.asm 
 
@@ -26,7 +25,6 @@ C_SRCS += \
 ../i2c_gy80.c 
 
 OBJS += \
-./DLOG4CHC.obj \
 ./DSP2803x_CodeStartBranch.obj \
 ./DSP2803x_CpuTimers.obj \
 ./DSP2803x_GlobalVariableDefs.obj \
@@ -37,7 +35,6 @@ OBJS += \
 ./i2c_gy80.obj 
 
 ASM_DEPS += \
-./DLOG4CHC.d \
 ./DSP2803x_CodeStartBranch.d \
 ./DSP2803x_usDelay.d 
 
@@ -58,7 +55,6 @@ C_DEPS__QUOTED += \
 "i2c_gy80.d" 
 
 OBJS__QUOTED += \
-"DLOG4CHC.obj" \
 "DSP2803x_CodeStartBranch.obj" \
 "DSP2803x_CpuTimers.obj" \
 "DSP2803x_GlobalVariableDefs.obj" \
@@ -69,12 +65,10 @@ OBJS__QUOTED += \
 "i2c_gy80.obj" 
 
 ASM_DEPS__QUOTED += \
-"DLOG4CHC.d" \
 "DSP2803x_CodeStartBranch.d" \
 "DSP2803x_usDelay.d" 
 
 ASM_SRCS__QUOTED += \
-"../DLOG4CHC.asm" \
 "D:/ti/controlSUITE/device_support/f2803x/v121/DSP2803x_common/source/DSP2803x_CodeStartBranch.asm" \
 "../DSP2803x_usDelay.asm" 
 

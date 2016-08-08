@@ -11,7 +11,6 @@ GEN_CMDS__FLAG :=
 
 ORDERED_OBJS += \
 "D:/ti/controlSUITE/device_support/f2803x/v121/DSP2803x_headers/cmd/DSP2803x_Headers_nonBIOS.cmd" \
-"./DLOG4CHC.obj" \
 "./DSP2803x_CodeStartBranch.obj" \
 "./DSP2803x_CpuTimers.obj" \
 "./DSP2803x_GlobalVariableDefs.obj" \
@@ -151,8 +150,8 @@ HVBLDC_Sensorless.out: $(OBJS) $(CMD_SRCS) $(CMD_UPPER_SRCS) $(LIB_SRCS) $(GEN_C
 clean:
 	-$(RM) $(EXE_OUTPUTS__QUOTED)
 	-$(RM) "DSP2803x_CpuTimers.d" "DSP2803x_GlobalVariableDefs.d" "DSP2803x_I2C.d" "HVBLDC_Sensorless-DevInit_F2803x.d" "HVBLDC_Sensorless.d" "i2c_gy80.d" 
-	-$(RM) "DLOG4CHC.obj" "DSP2803x_CodeStartBranch.obj" "DSP2803x_CpuTimers.obj" "DSP2803x_GlobalVariableDefs.obj" "DSP2803x_I2C.obj" "DSP2803x_usDelay.obj" "HVBLDC_Sensorless-DevInit_F2803x.obj" "HVBLDC_Sensorless.obj" "i2c_gy80.obj" 
-	-$(RM) "DLOG4CHC.d" "DSP2803x_CodeStartBranch.d" "DSP2803x_usDelay.d" 
+	-$(RM) "DSP2803x_CodeStartBranch.obj" "DSP2803x_CpuTimers.obj" "DSP2803x_GlobalVariableDefs.obj" "DSP2803x_I2C.obj" "DSP2803x_usDelay.obj" "HVBLDC_Sensorless-DevInit_F2803x.obj" "HVBLDC_Sensorless.obj" "i2c_gy80.obj" 
+	-$(RM) "DSP2803x_CodeStartBranch.d" "DSP2803x_usDelay.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 

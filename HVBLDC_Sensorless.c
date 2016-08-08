@@ -19,7 +19,7 @@ Description:	Primary system file for the Real Implementation of Sensorless
 
 #ifdef FLASH
 #pragma CODE_SECTION(MainISR,"ramfuncs");
-#pragma CODE_SECTION(RC_controlISR,"ramfuncs2");
+#pragma CODE_SECTION(i2c_int1a_isr,"ramfuncs");
 void MemCopy();
 void InitFlash();
 #endif
@@ -28,24 +28,46 @@ void InitFlash();
 interrupt void MainISR(void);
 void DeviceInit();
 void ramp_initial(void);
-void Servo_epwm_initial(void);
-#if (inter_select==debounce)
+
+
 interrupt void DebounceISR(void);
-#endif
 
-#if (inter_select==RC_control)
-interrupt void RC_controlISR(void);
-#endif
+// State Machine function prototypes
+//------------------------------------
+// Alpha states
+void A0(void);	//state A0
+void B0(void);	//state B0
+void C0(void);	//state C0
 
+// A branch states
+void A1(void);	//state A1
+void A2(void);	//state A2
+void A3(void);	//state A3
+
+// B branch states
+void B1(void);	//state B1
+void B2(void);	//state B2
+void B3(void);	//state B3
+
+// C branch states
+void C1(void);	//state C1
+void C2(void);	//state C2
+void C3(void);	//state C3
+
+// Variable declarations
+void (*Alpha_State_Ptr)(void);	// Base States pointer
+void (*A_Task_Ptr)(void);		// State pointer A branch
+void (*B_Task_Ptr)(void);		// State pointer B branch
+void (*C_Task_Ptr)(void);		// State pointer C branch
 
 // Used for running BackGround in flash, and ISR in RAM
 extern Uint16 *RamfuncsLoadStart, *RamfuncsLoadEnd, *RamfuncsRunStart;
-extern Uint16 *RamfuncsLoadStart2, *RamfuncsLoadEnd2, *RamfuncsRunStart2;
 
-//int16	VTimer0[4];			// Virtual Timers slaved off CPU Timer 0 (A events)
-//int16	VTimer1[4]; 		// Virtual Timers slaved off CPU Timer 1 (B events)
-//int16	VTimer2[4]; 		// Virtual Timers slaved off CPU Timer 2 (C events)
-//int16	SerialCommsTimer;
+
+int16	VTimer0[4];			// Virtual Timers slaved off CPU Timer 0 (A events)
+int16	VTimer1[4]; 		// Virtual Timers slaved off CPU Timer 1 (B events)
+int16	VTimer2[4]; 		// Virtual Timers slaved off CPU Timer 2 (C events)
+int16	SerialCommsTimer;
 
 // Global variables used in this system
 
@@ -59,7 +81,7 @@ Uint32 DebounceIsrTicker = 0;
 Uint32 CtrlSwitchRemainTime=0;
 Uint32 BLDC_decelerateTicker=0;//this ticker is for decelerate
 Uint32 TestProbe=0;
-Uint16 rc_isr_ticker=0;
+
 Uint32 VirtualTimer = 0;
 Uint16 SpeedLoopFlag1 = FALSE;
 Uint16 SpeedLoopFlag2 = FALSE;
@@ -92,11 +114,17 @@ Uint32 CmtnPeriodSetpt = 0x00000400;//0x000000400
 Uint32 RampDelay = 20;
 #endif
 
-
-_iq SpeedRef1=_IQ(0.2);
-_iq SpeedRef2=_IQ(0.2);
+_iq SpeedRef1=_IQ(0.4);
+_iq SpeedRef2=_IQ(0.4);
 _iq Rolling=0;
 _iq thrust=0;
+//_iq SpeedRef=_IQ(0.3);
+
+//int16 DlogCh1 = 0;
+//int16 DlogCh2 = 0;
+//int16 DlogCh3 = 0;
+//int16 DlogCh4 = 0;
+
 
 // Used for ADC Configuration
 int 	ChSel[16]   = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
@@ -156,23 +184,93 @@ RCCtrl RollStick=RCCtrl_DEFAULTS;
 RCCtrl YawStick=RCCtrl_DEFAULTS;
 RCCtrl PitchStick=RCCtrl_DEFAULTS;
 RCCtrl AutoStick=RCCtrl_DEFAULTS;
+
+void I2CA_Init(void);
+void InitI2CGpio(void);
+Uint16 I2CA_WriteData(struct I2CMSG *msg);
+Uint16 I2CA_ReadData(struct I2CMSG *msg);
 void PieCntlInit(void);
 void PieVectTableInit(void);
+interrupt void i2c_int1a_isr(void);
 
+#define I2C_SLAVE_ADDR   0x53 //i2c device address
+#define I2C_NUMBYTES    2    //the byte of read datasheet
+#define X_HIGH_ADDR 0x32
+#define X_LOW_ADDR 0x33
+#define Y_HIGH_ADDR 0x34
+#define Y_LOW_ADDR 0x35
+#define Z_HIGH_ADDR 0x36
+#define Z_LOW_ADDR 0x37
+
+/*declare the channel for select*/
+Uint16 I2C_read_channel=0x00;
+#define X 0X00
+#define Y 0X01
+#define Z 0X02
+//Uint16 I2C_HIGH_ADDR;
+//Uint16 I2C_LOW_ADDR;
+// Global variables
+//this is copy the arduino example, for enable the measurement or something
+struct I2CMSG I2cMsgOut1 = { I2C_MSGSTAT_SEND_WITHSTOP,
+								I2C_SLAVE_ADDR,
+								1,// # of byte
+								0X2D, //I2C_EEPROM_HIGH_ADDR,
+								8,                   // Msg Byte 1
+							};// Msg Byte 1
+//this is read the x axis date address
+struct I2CMSG I2cMsgIn1 = { I2C_MSGSTAT_SEND_NOSTOP,
+							I2C_SLAVE_ADDR,
+							I2C_NUMBYTES,
+							X_HIGH_ADDR,
+							X_LOW_ADDR};
+
+struct I2CMSG *CurrentMsgPtr;				// Used in interrupts
+
+double g[3];//the x axis gravity data
+Uint16 virtualtimer = 0;
+Uint16 readcounter = 0x00;//for lower the repetition rate for read
+Uint16 device_intial_done_flag=0xFF;
+Uint16 I2CA_Read_fail=0x00;//for check whether device is connected of not
+Uint16 i2c_read_return=0xff;
+Uint16 i2c_isr_ticker=0;
 void main(void){
+
+
+	Uint16 Error;
+	Uint16 i;
+
+	CurrentMsgPtr = &I2cMsgOut1;
+	DeviceInit();	// Device Life support & GPIO
 // Only used if running from FLASH
 // Note that the variable FLASH is defined by the compiler
-	DeviceInit();	// Device Life support & GPIO
+
 #ifdef FLASH
 // Copy time critical code and Flash setup code to RAM
 // The  RamfuncsLoadStart, RamfuncsLoadEnd, and RamfuncsRunStart
 // symbols are created by the linker. Refer to the linker files.
 	MemCopy(&RamfuncsLoadStart, &RamfuncsLoadEnd, &RamfuncsRunStart);
-	MemCopy(&RamfuncsLoadStart2, &RamfuncsLoadEnd2, &RamfuncsRunStart2);
 // Call Flash Initialization to setup flash waitstates
 // This function must reside in RAM
 	InitFlash();	// Call the flash wrapper init function
 #endif //(FLASH)
+
+	InitI2CGpio();
+
+
+//// Tasks State-machine init
+//	Alpha_State_Ptr = &A0;
+//	A_Task_Ptr = &A1;
+//	B_Task_Ptr = &B1;
+
+	//EnableFlag =GpioDataRegs.GPADAT.bit.GPIO15;// Get value from Gpio, and Gpio value is control by physical switch
+
+   // Waiting for enable flag set
+	/*Prevent some one forget to turn off the enable switch,
+	 * this program need to start at enable switch off state*/
+//	while(EnableFlag==TRUE)
+//	{
+//		BackTickerTrue++;
+//	}
 
 	while (EnableFlag==FALSE)
     {
@@ -182,6 +280,7 @@ void main(void){
 // Initialize all the Device Peripherals:
 // This function is found in DSP280x_CpuTimers.c
    InitCpuTimers();
+
 // Configure CPU-Timer 0 to interrupt every ISR Period:
 // 60MHz CPU Freq, ISR Period (in uSeconds)
 // This function is found in DSP280x_CpuTimers.c
@@ -189,8 +288,8 @@ void main(void){
    StartCpuTimer0();
 
 // Configure CPU-Timer 1,2 for background loops
-   ConfigCpuTimer(&CpuTimer1, 60,25);
-   ConfigCpuTimer(&CpuTimer2, 60, 5000);
+   ConfigCpuTimer(&CpuTimer1, 60, 1000);
+   ConfigCpuTimer(&CpuTimer2, 60, 50000);
    StartCpuTimer1();
    StartCpuTimer2();
 
@@ -205,17 +304,22 @@ void main(void){
         // but instead wants to use their own ISR.
 
 	EALLOW;	// This is needed to write to EALLOW protected registers
+	PieVectTable.I2CINT1A = &i2c_int1a_isr;
 	PieVectTable.TINT0 = &MainISR;
-	#if(inter_sellect==debounce)
-		PieVectTable.TINT1 = &DebounceISR;
-	#endif
-
-	#if (inter_select==RC_control)
-		PieVectTable.TINT1 = &RC_controlISR;
-	#endif
+	PieVectTable.TINT1 = &DebounceISR;
 
 	EDIS;   // This is needed to disable write to EALLOW protected registers
 
+// Step 4. Initialize all the Device Peripherals:
+// This function is found in DSP2803x_InitPeripherals.c
+// InitPeripherals(); // Not required for this example
+	I2CA_Init();
+// Clear incoming message buffer
+	for (i = 0; i < I2C_MAX_BUFFER_SIZE; i++) {
+		I2cMsgIn1.MsgBuffer[i] = 0x0000;
+	}
+	// Enable I2C interrupt 1 in the PIE: Group 8 interrupt 1
+		PieCtrlRegs.PIEIER8.bit.INTx1 = 1;
 	// Enable PIE group 1 interrupt 7 for TINT0
     PieCtrlRegs.PIEIER1.all = M_INT7;
 
@@ -262,11 +366,12 @@ void main(void){
 	 ChSel[2]=9;	// ChSelect: ADC B1-> Motor1 Phase B Voltage
 	 ChSel[3]=8;	// ChSelect: ADC B0-> Motor1 Phase C Voltage
 //FOR BLDC2 FEEDBACK ADC
-
+//
 	 ChSel[5]=2;	// ChSelect: ADC A2-> Motor1 Phase A Voltage
 	 ChSel[6]=1;	// ChSelect: ADC A1-> Motor1 Phase B Voltage
 	 ChSel[7]=0;	// ChSelect: ADC A0-> Motor1 Phase C Voltage
 
+	 ChSel[10]=5;  // ChSelect: ADC A5-> SPEEDREF
 //-------------------------------------------------------------------------
 
 	 ADC_MACRO_INIT(ChSel,TrigSel,ACQPS)
@@ -277,7 +382,7 @@ void main(void){
  	speed1.SpeedScaler = (Uint32)(ISR_FREQUENCY/(1*BASE_FREQ*0.001));
 
  	speed2.InputSelect = 1;
- 	speed2.BaseRpm = 120*(BASE_FREQ/POLES);//poles=14,
+ 	speed2.BaseRpm = 120*(BASE_FREQ/POLES);
  	speed2.SpeedScaler = (Uint32)(ISR_FREQUENCY/(1*BASE_FREQ*0.001));
 
  	/*---initiate the parameter of ramp----*/
@@ -295,35 +400,173 @@ void main(void){
 	pid2_spd.Umax = _IQ(0.99);
 	pid2_spd.Umin = _IQ(0);
 
-	/*------------------------------------------------------------
-	 * for control the servo motor, the ePWM7 A&B are needed
-	 * here initailize the parameter for ePWM7
- 	 ---------------------------------------------------------------*/
-	Servo_epwm_initial();
-
 	GpioDataRegs.GPADAT.bit.GPIO21=0;
 	//get BLDC_CtrlMod value from Gpio
 // IDLE loop. Just sit and loop forever:
 	for(;;)  //infinite loop
 	{
 		BackTicker++;
-
 		/*------------------------------------------------------------------------------------
-		The following code is using for control the bldc motor by Futaba T6K controller
-		since the bldc motor control is referenced by the spd.ref, so Speedref has the thrustStick term
-		and the rolling is controlled by the motor as well, so the rolling term needed to be considered
-		and the
-		 --------------------------------------------------------------------------------------*/
-		Rolling=_IQmpy(PitchStick.duty-_IQ(0.5),_IQ(0.3));
-		thrust=ThrustStick.duty+_IQ(0.1);
-		SpeedRef1=_IQsat(thrust+Rolling,_IQ(0.99),_IQ(0.1));
-		SpeedRef2=_IQsat(thrust-Rolling,_IQ(0.99),_IQ(0.1));
-		EPwm7Regs.CMPA.half.CMPA=46200+2000*_IQ24toF(PitchStick.duty-_IQ(0.5))+1000*_IQ24toF(YawStick.duty-_IQ(0.5));
-		EPwm7Regs.CMPB=46200+2000*_IQ24toF(PitchStick.duty-_IQ(0.5))-1000*_IQ24toF(YawStick.duty-_IQ(0.5));
-	} //END MAIN CODE
+				The following code is using for control the bldc motor by Futaba T6K controller
+				since the bldc motor control is referenced by the spd.ref, so Speedref has the thrustStick term
+				and the rolling is controlled by the motor as well, so the rolling term needed to be considered
+				and the
+				 --------------------------------------------------------------------------------------*/
+				Rolling=_IQmpy(RollStick.duty-_IQ(0.5),_IQ(0.5));
+				thrust=ThrustStick.duty+_IQ(0.1);
+				SpeedRef1=_IQsat(thrust+Rolling,_IQ(0.99),_IQ(0.1));
+				SpeedRef2=_IQsat(thrust-Rolling,_IQ(0.99),_IQ(0.1));
+				EPwm7Regs.CMPA.half.CMPA=46200+2000*_IQ24toF(PitchStick.duty-_IQ(0.5))+1000*_IQ24toF(YawStick.duty-_IQ(0.5));
+				EPwm7Regs.CMPB=46200+2000*_IQ24toF(PitchStick.duty-_IQ(0.5))-1000*_IQ24toF(YawStick.duty-_IQ(0.5));
+	}
+} //END MAIN CODE
 
-}
+
 //
+//=================================================================================
+//	STATE-MACHINE SEQUENCING AND SYNCRONIZATION FOR SLOW BACKGROUND TASKS
+//=================================================================================
+
+//--------------------------------- FRAMEWORK -------------------------------------
+void A0(void)
+{
+	// loop rate synchronizer for A-tasks
+	if(CpuTimer1Regs.TCR.bit.TIF == 1)
+	{
+		CpuTimer1Regs.TCR.bit.TIF = 1;	// clear flag
+
+		//-----------------------------------------------------------
+		(*A_Task_Ptr)();		// jump to an A Task (A1,A2,A3,...)
+		//-----------------------------------------------------------
+
+		VTimer0[0]++;			// virtual timer 0, instance 0 (spare)
+		SerialCommsTimer++;
+	}
+
+	Alpha_State_Ptr = &B0;		// Comment out to allow only A tasks
+}
+
+void B0(void)
+{
+	// loop rate synchronizer for B-tasks
+	if(CpuTimer2Regs.TCR.bit.TIF == 1)
+	{
+		CpuTimer2Regs.TCR.bit.TIF = 1;				// clear flag
+
+		//-----------------------------------------------------------
+		(*B_Task_Ptr)();		// jump to a B Task (B1,B2,B3,...)
+		//-----------------------------------------------------------
+		VTimer1[0]++;			// virtual timer 1, instance 0 (spare)
+	}
+
+	Alpha_State_Ptr = &A0;		// Allow C state tasks
+}
+/*
+void C0(void)
+{
+	// loop rate synchronizer for C-tasks
+	if(CpuTimer2Regs.TCR.bit.TIF == 1)
+	{
+		CpuTimer2Regs.TCR.bit.TIF = 1;				// clear flag
+
+		//-----------------------------------------------------------
+		(*B_Task_Ptr)();		// jump to a C Task (C1,C2,C3,...)
+		//-----------------------------------------------------------
+		VTimer2[0]++;			// virtual timer 1, instance 0 (spare)
+	}
+
+	Alpha_State_Ptr = &A0;		// Back to state A0 tasks
+}
+*/
+//=================================================================================
+//	A - TASKS (executed in every 1 msec)
+//=================================================================================
+//--------------------------------------------------------
+void A1(void) // SPARE (not used)
+//--------------------------------------------------------
+{
+
+	//-------------------
+	//the next time CpuTimer0 'counter' reaches Period value go to A2
+	A_Task_Ptr = &A2;
+	//-------------------
+}
+
+//-----------------------------------------------------------------
+void A2(void) // SPARE (not used)
+//-----------------------------------------------------------------
+{
+
+	//-------------------
+	//the next time CpuTimer0 'counter' reaches Period value go to A3
+	A_Task_Ptr = &A3;
+	//-------------------
+}
+
+//-----------------------------------------
+void A3(void) // SPARE (not used)
+//-----------------------------------------
+{
+
+	//-----------------
+	//the next time CpuTimer0 'counter' reaches Period value go to A1
+	A_Task_Ptr = &A1;
+	//-----------------
+}
+
+
+
+//=================================================================================
+//	B - TASKS (executed in every 5 msec)
+//=================================================================================
+
+//----------------------------------- USER ----------------------------------------
+
+//----------------------------------------
+void B1(void) // Toggle GPIO-00
+//----------------------------------------
+{/*
+	if(EPwm1Regs.TZFLG.bit.OST==0x1)			// TripZ for PWMs is low (fault trip)
+	  { TripFlagDMC=1;
+	  GpioDataRegs.GPBTOGGLE.bit.GPIO42 = 1;
+	  }
+
+	if(GpioDataRegs.GPADAT.bit.GPIO15 == 1)		// Over Current Prot. for Integrated Power Module is high (fault trip)
+	  { TripFlagDMC=1;
+	  GpioDataRegs.GPBTOGGLE.bit.GPIO44 = 1;
+	  }
+
+	GpioDataRegs.GPBTOGGLE.bit.GPIO34 = 1;	   // Turn on/off LD3 on the controlCARD
+
+*/
+	//-----------------
+	//the next time CpuTimer1 'counter' reaches Period value go to B2
+	B_Task_Ptr = &B2;
+	//-----------------
+}
+
+//----------------------------------------
+void B2(void) //  SPARE
+//----------------------------------------
+{
+
+	//-----------------
+	//the next time CpuTimer1 'counter' reaches Period value go to B3
+	B_Task_Ptr = &B3;
+	//-----------------
+}
+
+//----------------------------------------
+void B3(void) //  SPARE
+//----------------------------------------
+{
+
+	//-----------------
+
+	//the next time CpuTimer1 'counter' reaches Period value go to B1
+	B_Task_Ptr = &B1;
+	//-----------------
+}
 
 
 
@@ -336,7 +579,6 @@ interrupt void MainISR(void)
 
 // Verifying the ISR
     IsrTicker++;
-#if(inter_select==debounce)
     BLDC_CtrlMod=GpioDataRegs.GPADAT.bit.GPIO16;
 	if(BLDC_decelDoneFlag==1)
 	{
@@ -345,7 +587,8 @@ interrupt void MainISR(void)
 
 		BLDC_RotDirec=BLDC_CtrlMod;//
 		CmtnPeriodSetpt = 0x00000400;
-xsd to be restarted
+
+		//since the start up process needed to be restarted
 		// Initialize RMPCNTL module
 		rc1.RampDelayCount=0;
 		rc1.EqualFlag=0;
@@ -417,7 +660,6 @@ xsd to be restarted
 			mod1.Direction=0;
 			modinv1.Direction=1;
 		}
-#endif
 /*-----------------end of rotate direction decide-----------*/
 
 	// Initial Rotor Alignment Process
@@ -427,8 +669,8 @@ xsd to be restarted
     	rmp3_2.Ramp3DoneFlag=0;
     	CmtnPeriodSetpt = 0x00000400;
 
-//		SpeedRef1=_IQ(0.3);
-//		SpeedRef2=_IQ(0.3);
+		SpeedRef1=_IQ(0.3);
+		SpeedRef2=_IQ(0.3);
 //		SpeedRef=_IQ(0.3);
 		SpeedLoopFlag1=FALSE;
 		SpeedLoopFlag2=FALSE;
@@ -466,8 +708,8 @@ xsd to be restarted
 
 //	   SpeedRef1=_IQsat(_IQ12toIQ(AdcResult.ADCRESULT10),_IQ(0.99),_IQ(0.1));//_IQ(0.1)+_IQ12toIQ(AdcResult.ADCRESULT10)+_IQ(0.1);
 //	   SpeedRef2=_IQsat(_IQ12toIQ(AdcResult.ADCRESULT10),_IQ(0.99),_IQ(0.1));//_IQ(0.1)+_IQ12toIQ(AdcResult.ADCRESULT10)+_IQ(0.1);
-//	   //DFuncDesired1=_IQ15(0.1)+(AdcResult.ADCRESULT10<<3);//use external variable resistor control BLDC1
-//	   //DFuncDesired2=AdcResult.ADCRESULT11<<3;//use external variable resistor control BLDC2
+	   //DFuncDesired1=_IQ15(0.1)+(AdcResult.ADCRESULT10<<3);//use external variable resistor control BLDC1
+	   //DFuncDesired2=AdcResult.ADCRESULT11<<3;//use external variable resistor control BLDC2
 
 // =============================== LEVEL 1 ======================================
 //	This Level describes the steps for a minimum system check-out which confirms
@@ -1055,18 +1297,19 @@ xsd to be restarted
 	VirtualTimer++;
 	VirtualTimer &= 0x00007FFF;
    }
-	RCONTROL_MACRO(GPIO18,ThrustStick)
-	RCONTROL_MACRO(GPIO19,RollStick)
-	RCONTROL_MACRO(GPIO16,YawStick)
-	RCONTROL_MACRO(GPIO17,PitchStick)
-	RCONTROL_MACRO(GPIO20,AutoStick)
+
+    	RCONTROL_MACRO(GPIO18,ThrustStick)
+    	RCONTROL_MACRO(GPIO19,RollStick)
+    	RCONTROL_MACRO(GPIO16,YawStick)
+    	RCONTROL_MACRO(GPIO17,PitchStick)
+    	RCONTROL_MACRO(GPIO20,AutoStick)
+
 // Acknowledge interrupt to recieve more interrupts from PIE group 1
 	PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 
 
 }// ISR Ends Here
 
-#if(inter_sellect==debounce)
 /*------the debounceISR is for switch judge, period 1ms-----*/
 interrupt void DebounceISR(void)
 {
@@ -1135,27 +1378,6 @@ interrupt void DebounceISR(void)
 
     PieCtrlRegs.PIEACK.all = PIEACK_GROUP3;
 }//end of debounceISR
-#endif
-
-
-#if (inter_select==RC_control)
-/*
- this isr is for detect the lengh of pwn signal from RC control
- there should be 5 channel
- */
-interrupt void RC_controlISR(void)
-{
-rc_isr_ticker++;
-
-//	RCONTROL_MACRO(GPIO18,ThrustStick)
-//	RCONTROL_MACRO(GPIO19,RollStick)
-//	RCONTROL_MACRO(GPIO16,YawStick)
-//	RCONTROL_MACRO(GPIO17,PitchStick)
-//	RCONTROL_MACRO(GPIO20,AutoStick)
-
-    PieCtrlRegs.PIEACK.all = PIEACK_GROUP3;
-}//end of rc control pwm detect
-#endif
 
 void ramp_initial(void)
 {
@@ -1245,34 +1467,69 @@ void ramp_initial(void)
 			cmtninv1.NWDelta = 2;
 			cmtninv1.NoiseWindowMax = cmtninv1.NWDelayThres - cmtninv1.NWDelta;
 }
-void Servo_epwm_initial(void)
-{
-	// ePWM7 register configuration with HRPWM
-		// ePWM7A toggle low/high with MEP control on Rising edge
-	EALLOW;
-	EPwm7Regs.TBCTL.bit.PRDLD = TB_IMMEDIATE; // set Immediate load
-	EPwm7Regs.TBPRD = 50000-1;      //period=50000 PWM frequency = 1 / period
-	EPwm7Regs.CMPA.half.CMPA =49600;  //Compare to the TBCLK, SET MOTOR A T CENTER POSITION
-	EPwm7Regs.CMPB = 49600;	              //Compare to the TBCLK
-	EPwm7Regs.TBPHS.all = 0;
-	EPwm7Regs.TBCTR = 0;
-	EDIS;
-	EPwm7Regs.TBCTL.bit.CTRMODE = TB_COUNT_UP; //THE CBCLK is up-count mode
-	EPwm7Regs.TBCTL.bit.PHSEN = TB_DISABLE;		       // EPwm1 is the Master
-	EPwm7Regs.TBCTL.bit.SYNCOSEL = TB_SYNC_DISABLE;
-	EPwm7Regs.TBCTL.bit.HSPCLKDIV = TB_DIV5;//divide /6  計時和SYSCLKOUT的比率
-	EPwm7Regs.TBCTL.bit.CLKDIV = TB_DIV4;//divide /4
-	//Since the TBCLK=SYSCLK/( HSPCLKDIV* CLKDIV), so TBCLK=(6*4)/60MHz
-	EPwm7Regs.CMPCTL.bit.LOADAMODE = CC_CTR_ZERO;
-	EPwm7Regs.CMPCTL.bit.LOADBMODE = CC_CTR_ZERO;
-	EPwm7Regs.CMPCTL.bit.SHDWAMODE = CC_SHADOW;
-	EPwm7Regs.CMPCTL.bit.SHDWBMODE = CC_SHADOW;
-	EPwm7Regs.AQCTLA.bit.ZRO =AQ_CLEAR;          // PWM toggle low/high
-	EPwm7Regs.AQCTLA.bit.CAU =AQ_SET;
-	EPwm7Regs.AQCTLB.bit.ZRO = AQ_CLEAR;
-	EPwm7Regs.AQCTLB.bit.CBU = AQ_SET;
 
+
+interrupt void i2c_int1a_isr(void)     // I2C-A
+{
+	i2c_isr_ticker++;
+	Uint16 IntSource, i;
+
+	// Read interrupt source
+	IntSource = I2caRegs.I2CISRC.all;
+
+	// Interrupt source = stop condition detected
+	if (IntSource == I2C_SCD_ISRC) {
+		// If completed message was writing data, reset msg to inactive state
+		if (CurrentMsgPtr->MsgStatus == I2C_MSGSTAT_WRITE_BUSY) {
+			CurrentMsgPtr->MsgStatus = I2C_MSGSTAT_INACTIVE;
+		}
+		else {
+			// If a message receives a NACK during the address setup portion of the
+			// EEPROM read, the code further below included in the register access ready
+			// interrupt source code will generate a stop condition. After the stop
+			// condition is received (here), set the message status to try again.
+			// User may want to limit the number of retries before generating an error.
+			if (CurrentMsgPtr->MsgStatus == I2C_MSGSTAT_SEND_NOSTOP_BUSY) {
+				CurrentMsgPtr->MsgStatus = I2C_MSGSTAT_SEND_NOSTOP;
+			}
+			// If completed message was reading EEPROM data, reset msg to inactive state
+			// and read data from FIFO.
+			else if (CurrentMsgPtr->MsgStatus == I2C_MSGSTAT_READ_BUSY) {
+				CurrentMsgPtr->MsgStatus = I2C_MSGSTAT_INACTIVE;
+				for (i = 0; i < I2C_NUMBYTES; i++) {
+					CurrentMsgPtr->MsgBuffer[i] = I2caRegs.I2CDRR;
+				}
+				//transfer the buffer's date into gravity force
+
+			}
+		}
+	}  // end of stop condition detected
+
+	// Interrupt source = Register Access Ready
+	// This interrupt is used to determine when the EEPROM address setup portion of the
+	// read data communication is complete. Since no stop bit is commanded, this flag
+	// tells us when the message has been sent instead of the SCD flag. If a NACK is
+	// received, clear the NACK bit and command a stop. Otherwise, move on to the read
+	// data portion of the communication.
+	else if (IntSource == I2C_ARDY_ISRC) {
+		if (I2caRegs.I2CSTR.bit.NACK == 1) {
+			I2caRegs.I2CMDR.bit.STP = 1;
+			I2caRegs.I2CSTR.all = I2C_CLR_NACK_BIT;
+		} else if (CurrentMsgPtr->MsgStatus == I2C_MSGSTAT_SEND_NOSTOP_BUSY) {
+			CurrentMsgPtr->MsgStatus = I2C_MSGSTAT_RESTART;
+		}
+	}  // end of register access ready
+
+	else {
+		// Generate some error due to invalid interrupt source
+		__asm("   ESTOP0");
+	}
+
+	// Enable future I2C (PIE Group 8) interrupts
+	PieCtrlRegs.PIEACK.all = PIEACK_GROUP8;
 }
+
+
 //===========================================================================
 // No more.
 //===========================================================================

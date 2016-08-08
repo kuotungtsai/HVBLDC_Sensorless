@@ -36,6 +36,7 @@ HVBLDC_Sensorless.obj: D:/ti/controlSUITE/libs/app_libs/motor_control/math_block
 HVBLDC_Sensorless.obj: ../mod6_cnt_inv.h
 HVBLDC_Sensorless.obj: ../com_trig_inv.h
 HVBLDC_Sensorless.obj: ../impulse_inv.h
+HVBLDC_Sensorless.obj: ../rc_control.h
 HVBLDC_Sensorless.obj: D:/ti/controlSUITE/libs/app_libs/motor_control/drivers/f2803x_v2.0/f2803xileg_vdc.h
 HVBLDC_Sensorless.obj: D:/ti/controlSUITE/development_kits/~SupportFiles/F2803x_headers/f2803xbmsk.h
 HVBLDC_Sensorless.obj: D:/ti/controlSUITE/libs/app_libs/motor_control/drivers/f2803x_v2.0/f2803xbldcpwm.h
@@ -90,6 +91,7 @@ D:/ti/controlSUITE/libs/app_libs/motor_control/math_blocks/v4.0/rmp_cntl.h:
 ../mod6_cnt_inv.h: 
 ../com_trig_inv.h: 
 ../impulse_inv.h: 
+../rc_control.h: 
 D:/ti/controlSUITE/libs/app_libs/motor_control/drivers/f2803x_v2.0/f2803xileg_vdc.h: 
 D:/ti/controlSUITE/development_kits/~SupportFiles/F2803x_headers/f2803xbmsk.h: 
 D:/ti/controlSUITE/libs/app_libs/motor_control/drivers/f2803x_v2.0/f2803xbldcpwm.h: 

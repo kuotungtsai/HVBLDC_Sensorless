@@ -51,8 +51,7 @@ MEMORY
 */
 
 PAGE 0:
-	progRAM	    : origin = 0x008000, length = 0x001200 /* on-chip RAM (L0-L3)*/
-	progRAM2    : origin = 0x009200, length = 0x000600 /* on-chip RAM (L0-L3)*/
+	progRAM	    : origin = 0x008000, length = 0x001800 /* on-chip RAM (L0-L3)*/
 	OTP         : origin = 0x3D7800, length = 0x000400     /* on-chip OTP */
 	FLASHH      : origin = 0x3E8000, length = 0x002000     /* on-chip FLASH */
 	FLASHG      : origin = 0x3EA000, length = 0x002000     /* on-chip FLASH */
@@ -98,13 +97,6 @@ SECTIONS
                        LOAD_START(_RamfuncsLoadStart),
                        LOAD_END(_RamfuncsLoadEnd),
                        RUN_START(_RamfuncsRunStart),
-                       PAGE = 0
-
-   ramfuncs2          : LOAD = FLASHD,
-                       RUN = progRAM2, /*where the pragram start*/
-                       LOAD_START(_RamfuncsLoadStart2),
-                       LOAD_END(_RamfuncsLoadEnd2),
-                       RUN_START(_RamfuncsRunStart2),
                        PAGE = 0
 
    csmpasswds        : > CSM_PWL     PAGE = 0
