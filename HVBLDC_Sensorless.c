@@ -19,7 +19,7 @@ Description:	Primary system file for the Real Implementation of Sensorless
 
 #ifdef FLASH
 #pragma CODE_SECTION(MainISR,"ramfuncs");
-#pragma CODE_SECTION(i2c_int1a_isr,"ramfuncs");
+//#pragma CODE_SECTION(i2c_int1a_isr,"ramfuncs");
 void MemCopy();
 void InitFlash();
 #endif
@@ -28,9 +28,10 @@ void InitFlash();
 interrupt void MainISR(void);
 void DeviceInit();
 void ramp_initial(void);
+void Servo_epwm_initial(void);
 
 
-interrupt void DebounceISR(void);
+//interrupt void DebounceISR(void);
 
 // State Machine function prototypes
 //------------------------------------
@@ -109,9 +110,9 @@ Uint32 CmtnPeriodTarget = 0x00000320;//150****460
 Uint32 CmtnPeriodSetpt = 0x00001194;//200
 Uint32 RampDelay = 10;//10
 #else
-Uint32 CmtnPeriodTarget = 0x00000200;//12C;//0x0250 FOR 2200KV 1CC//1f4
+Uint32 CmtnPeriodTarget = 0x0000012c;//12C;//0x0250 FOR 2200KV 1CC//1f4
 Uint32 CmtnPeriodSetpt = 0x00000400;//0x000000400
-Uint32 RampDelay = 20;
+Uint32 RampDelay = 25;
 #endif
 
 _iq SpeedRef1=_IQ(0.4);
@@ -184,62 +185,62 @@ RCCtrl RollStick=RCCtrl_DEFAULTS;
 RCCtrl YawStick=RCCtrl_DEFAULTS;
 RCCtrl PitchStick=RCCtrl_DEFAULTS;
 RCCtrl AutoStick=RCCtrl_DEFAULTS;
-
-void I2CA_Init(void);
-void InitI2CGpio(void);
-Uint16 I2CA_WriteData(struct I2CMSG *msg);
-Uint16 I2CA_ReadData(struct I2CMSG *msg);
+//
+//void I2CA_Init(void);
+//void InitI2CGpio(void);
+//Uint16 I2CA_WriteData(struct I2CMSG *msg);
+//Uint16 I2CA_ReadData(struct I2CMSG *msg);
 void PieCntlInit(void);
 void PieVectTableInit(void);
-interrupt void i2c_int1a_isr(void);
-
-#define I2C_SLAVE_ADDR   0x53 //i2c device address
-#define I2C_NUMBYTES    2    //the byte of read datasheet
-#define X_HIGH_ADDR 0x32
-#define X_LOW_ADDR 0x33
-#define Y_HIGH_ADDR 0x34
-#define Y_LOW_ADDR 0x35
-#define Z_HIGH_ADDR 0x36
-#define Z_LOW_ADDR 0x37
-
-/*declare the channel for select*/
-Uint16 I2C_read_channel=0x00;
-#define X 0X00
-#define Y 0X01
-#define Z 0X02
-//Uint16 I2C_HIGH_ADDR;
-//Uint16 I2C_LOW_ADDR;
-// Global variables
-//this is copy the arduino example, for enable the measurement or something
-struct I2CMSG I2cMsgOut1 = { I2C_MSGSTAT_SEND_WITHSTOP,
-								I2C_SLAVE_ADDR,
-								1,// # of byte
-								0X2D, //I2C_EEPROM_HIGH_ADDR,
-								8,                   // Msg Byte 1
-							};// Msg Byte 1
-//this is read the x axis date address
-struct I2CMSG I2cMsgIn1 = { I2C_MSGSTAT_SEND_NOSTOP,
-							I2C_SLAVE_ADDR,
-							I2C_NUMBYTES,
-							X_HIGH_ADDR,
-							X_LOW_ADDR};
-
-struct I2CMSG *CurrentMsgPtr;				// Used in interrupts
-
-double g[3];//the x axis gravity data
-Uint16 virtualtimer = 0;
-Uint16 readcounter = 0x00;//for lower the repetition rate for read
-Uint16 device_intial_done_flag=0xFF;
-Uint16 I2CA_Read_fail=0x00;//for check whether device is connected of not
-Uint16 i2c_read_return=0xff;
-Uint16 i2c_isr_ticker=0;
+//interrupt void i2c_int1a_isr(void);
+//
+//#define I2C_SLAVE_ADDR   0x53 //i2c device address
+//#define I2C_NUMBYTES    2    //the byte of read datasheet
+//#define X_HIGH_ADDR 0x32
+//#define X_LOW_ADDR 0x33
+//#define Y_HIGH_ADDR 0x34
+//#define Y_LOW_ADDR 0x35
+//#define Z_HIGH_ADDR 0x36
+//#define Z_LOW_ADDR 0x37
+//
+///*declare the channel for select*/
+//Uint16 I2C_read_channel=0x00;
+//#define X 0X00
+//#define Y 0X01
+//#define Z 0X02
+////Uint16 I2C_HIGH_ADDR;
+////Uint16 I2C_LOW_ADDR;
+//// Global variables
+////this is copy the arduino example, for enable the measurement or something
+//struct I2CMSG I2cMsgOut1 = { I2C_MSGSTAT_SEND_WITHSTOP,
+//								I2C_SLAVE_ADDR,
+//								1,// # of byte
+//								0X2D, //I2C_EEPROM_HIGH_ADDR,
+//								8,                   // Msg Byte 1
+//							};// Msg Byte 1
+////this is read the x axis date address
+//struct I2CMSG I2cMsgIn1 = { I2C_MSGSTAT_SEND_NOSTOP,
+//							I2C_SLAVE_ADDR,
+//							I2C_NUMBYTES,
+//							X_HIGH_ADDR,
+//							X_LOW_ADDR};
+//
+//struct I2CMSG *CurrentMsgPtr;				// Used in interrupts
+//
+//double g[3];//the x axis gravity data
+//Uint16 virtualtimer = 0;
+//Uint16 readcounter = 0x00;//for lower the repetition rate for read
+//Uint16 device_intial_done_flag=0xFF;
+//Uint16 I2CA_Read_fail=0x00;//for check whether device is connected of not
+//Uint16 i2c_read_return=0xff;
+//Uint16 i2c_isr_ticker=0;
 void main(void){
 
 
-	Uint16 Error;
-	Uint16 i;
-
-	CurrentMsgPtr = &I2cMsgOut1;
+//	Uint16 Error;
+//	Uint16 i;
+//
+//	CurrentMsgPtr = &I2cMsgOut1;
 	DeviceInit();	// Device Life support & GPIO
 // Only used if running from FLASH
 // Note that the variable FLASH is defined by the compiler
@@ -254,7 +255,7 @@ void main(void){
 	InitFlash();	// Call the flash wrapper init function
 #endif //(FLASH)
 
-	InitI2CGpio();
+//	InitI2CGpio();
 
 
 //// Tasks State-machine init
@@ -271,7 +272,7 @@ void main(void){
 //	{
 //		BackTickerTrue++;
 //	}
-
+	GpioDataRegs.GPADAT.bit.GPIO21=1;
 	while (EnableFlag==FALSE)
     {
       BackTickerFalse++;
@@ -280,18 +281,20 @@ void main(void){
 // Initialize all the Device Peripherals:
 // This function is found in DSP280x_CpuTimers.c
    InitCpuTimers();
-
 // Configure CPU-Timer 0 to interrupt every ISR Period:
 // 60MHz CPU Freq, ISR Period (in uSeconds)
 // This function is found in DSP280x_CpuTimers.c
    ConfigCpuTimer(&CpuTimer0, 60, 1000/ISR_FREQUENCY);
    StartCpuTimer0();
-
 // Configure CPU-Timer 1,2 for background loops
    ConfigCpuTimer(&CpuTimer1, 60, 1000);
    ConfigCpuTimer(&CpuTimer2, 60, 50000);
    StartCpuTimer1();
    StartCpuTimer2();
+
+
+
+
 
 //   PieCntlInit();
 // Disable CPU interrupts and clear all CPU interrupt flags:
@@ -304,34 +307,27 @@ void main(void){
         // but instead wants to use their own ISR.
 
 	EALLOW;	// This is needed to write to EALLOW protected registers
-	PieVectTable.I2CINT1A = &i2c_int1a_isr;
+//	PieVectTable.I2CINT1A = &i2c_int1a_isr;
 	PieVectTable.TINT0 = &MainISR;
-	PieVectTable.TINT1 = &DebounceISR;
+//	PieVectTable.TINT1 = &DebounceISR;
 
 	EDIS;   // This is needed to disable write to EALLOW protected registers
 
-// Step 4. Initialize all the Device Peripherals:
-// This function is found in DSP2803x_InitPeripherals.c
-// InitPeripherals(); // Not required for this example
-	I2CA_Init();
-// Clear incoming message buffer
-	for (i = 0; i < I2C_MAX_BUFFER_SIZE; i++) {
-		I2cMsgIn1.MsgBuffer[i] = 0x0000;
-	}
+
 	// Enable I2C interrupt 1 in the PIE: Group 8 interrupt 1
-		PieCtrlRegs.PIEIER8.bit.INTx1 = 1;
+//		PieCtrlRegs.PIEIER8.bit.INTx1 = 1;
 	// Enable PIE group 1 interrupt 7 for TINT0
     PieCtrlRegs.PIEIER1.all = M_INT7;
 
 
 // Enable CPU INT8 which is connected to PIE group 8
-	IER |= M_INT8;
+//	IER |= M_INT8;
 	// Enable CPU INT1 for TINT0:
 	IER |= M_INT1;
 // Enable Global realtime interrupt DBGM
 
 // Enable CPU INT13 for TINT1:
-	IER |= M_INT13;
+//	IER |= M_INT13;
 //	IER=0x1081;
 // Enable global Interrupts and higher priority real-time debug events:
 	EINT;   // Enable Global interrupt INTM
@@ -390,17 +386,18 @@ void main(void){
  	/*end of ramp initiating*/
 
 // Initialize the PI module for speed
-	pid1_spd.Kp   = _IQ(0.4);//0.2
-	pid1_spd.Ki   = _IQ(T/0.7);///T/0.5);//T/0.1   T/0.8 FOR 1100KV
+	pid1_spd.Kp   = _IQ(0.8);//0.2
+	pid1_spd.Ki   = _IQ(T/0.9);///T/0.5);//T/0.1   T/0.8 FOR 1100KV
 	pid1_spd.Umax = _IQ(0.99);//0.99
 	pid1_spd.Umin = _IQ(0);//0
 
-	pid2_spd.Kp   = _IQ(0.4);//0.25
-	pid2_spd.Ki   = _IQ(T/0.7);//0.1
+	pid2_spd.Kp   = _IQ(0.8);//0.25
+	pid2_spd.Ki   = _IQ(T/0.9);//0.1
 	pid2_spd.Umax = _IQ(0.99);
 	pid2_spd.Umin = _IQ(0);
+	Servo_epwm_initial();
+	RollStick.duty=_IQ(0.5);
 
-	GpioDataRegs.GPADAT.bit.GPIO21=0;
 	//get BLDC_CtrlMod value from Gpio
 // IDLE loop. Just sit and loop forever:
 	for(;;)  //infinite loop
@@ -412,12 +409,17 @@ void main(void){
 				and the rolling is controlled by the motor as well, so the rolling term needed to be considered
 				and the
 				 --------------------------------------------------------------------------------------*/
+		if(AutoStick.PWM_width<45)
+		{
+			GpioDataRegs.GPADAT.bit.GPIO21=1;
+		}
+
 				Rolling=_IQmpy(RollStick.duty-_IQ(0.5),_IQ(0.5));
 				thrust=ThrustStick.duty+_IQ(0.1);
-				SpeedRef1=_IQsat(thrust+Rolling,_IQ(0.99),_IQ(0.1));
-				SpeedRef2=_IQsat(thrust-Rolling,_IQ(0.99),_IQ(0.1));
-				EPwm7Regs.CMPA.half.CMPA=46200+2000*_IQ24toF(PitchStick.duty-_IQ(0.5))+1000*_IQ24toF(YawStick.duty-_IQ(0.5));
-				EPwm7Regs.CMPB=46200+2000*_IQ24toF(PitchStick.duty-_IQ(0.5))-1000*_IQ24toF(YawStick.duty-_IQ(0.5));
+				SpeedRef1=_IQsat(thrust+Rolling,_IQ(0.95),_IQ(0.1));
+				SpeedRef2=_IQsat(thrust-Rolling,_IQ(0.95),_IQ(0.1));
+				EPwm7Regs.CMPA.half.CMPA=47000+4000*_IQ24toF(PitchStick.duty-_IQ(0.5))+2000*_IQ24toF(YawStick.duty-_IQ(0.5));
+				EPwm7Regs.CMPB=47000+4000*_IQ24toF(PitchStick.duty-_IQ(0.5))-2000*_IQ24toF(YawStick.duty-_IQ(0.5));
 	}
 } //END MAIN CODE
 
@@ -579,76 +581,8 @@ interrupt void MainISR(void)
 
 // Verifying the ISR
     IsrTicker++;
-    BLDC_CtrlMod=GpioDataRegs.GPADAT.bit.GPIO16;
-	if(BLDC_decelDoneFlag==1)
-	{
-		VirtualTimer=0;
-		AlignFlag=0x000F;//this will enable Rotor Alignment Process
+//    BLDC_CtrlMod=GpioDataRegs.GPADAT.bit.GPIO16;
 
-		BLDC_RotDirec=BLDC_CtrlMod;//
-		CmtnPeriodSetpt = 0x00000400;
-
-		//since the start up process needed to be restarted
-		// Initialize RMPCNTL module
-		rc1.RampDelayCount=0;
-		rc1.EqualFlag=0;
-		rc1.Tmp=0;
-		rc1.SetpointValue=0;
-		rc1.TargetValue=0;
-		impl1.Counter=1000;
-
-		rc2.RampDelayCount=0;
-		rc2.EqualFlag=0;
-		rc2.Tmp=0;
-		rc2.SetpointValue=0;
-		rc2.TargetValue=0;
-		impl2.Counter=1000;
-
-		// Initialize RMP2 module
-		rmp2_1.Out = (int32)ALIGN_DUTY;
-		rmp2_1.Ramp2Delay =0x00000050;
-		rmp2_1.Ramp2DelayCount=0;
-
-		rmp2_2.Out = (int32)ALIGN_DUTY;
-		rmp2_2.Ramp2Delay =0x00000050;
-		rmp2_2.Ramp2DelayCount=0;
-
-		// Initialize RMP3 module
-		rmp3_1.DesiredInput = CmtnPeriodTarget;
-		rmp3_1.Ramp3Delay = RampDelay;
-		rmp3_1.Out = CmtnPeriodSetpt;
-		rmp3_1.Ramp3DelayCount=0;
-		rmp3_1.Ramp3DoneFlag=0;
-
-		rmp3_2.DesiredInput = CmtnPeriodTarget;
-		rmp3_2.Ramp3Delay = RampDelay;
-		rmp3_2.Out = CmtnPeriodSetpt;
-		rmp3_2.Ramp3DelayCount=0;
-		rmp3_2.Ramp3DoneFlag=0;
-
-		mod1.Counter=0;
-		mod1.Direction=0;
-		mod1.TrigInput=1;
-
-		modinv1.Counter=0;
-		modinv1.Direction=0;
-		modinv1.TrigInput=1;
-
-		pid1_spd.Out=0;
-		pid1_spd.v1=0;
-		pid1_spd.ui=0;
-		pid1_spd.i1=0;
-		pid1_spd.up=0;
-
-		pid2_spd.Out=0;
-		pid2_spd.v1=0;
-		pid2_spd.ui=0;
-		pid2_spd.i1=0;
-		pid2_spd.up=0;
-
-		GpioDataRegs.GPADAT.bit.GPIO21=0;//on the little driver
-		BLDC_decelDoneFlag=0;
-	}
  /*-------------decide the rotate direction of bldc---------*/
 		if(BLDC_RotDirec==1)
 		{
@@ -665,6 +599,7 @@ interrupt void MainISR(void)
 	// Initial Rotor Alignment Process
     if (AlignFlag != 0)
     {
+    	GpioDataRegs.GPADAT.bit.GPIO21=0;
     	rmp3_1.Ramp3DoneFlag=0;
     	rmp3_2.Ramp3DoneFlag=0;
     	CmtnPeriodSetpt = 0x00000400;
@@ -1383,7 +1318,7 @@ void ramp_initial(void)
 {
 	  	  	  CmtnPeriodSetpt = 0x00000400;
 		  // Initialize RMPCNTL module
-		      rc1.RampDelayMax = 5;
+		      rc1.RampDelayMax = 2;
 		      rc1.RampLowLimit = _IQ(0);//0
 		      rc1.RampHighLimit = _IQ(1);
 		      rc1.RampDelayCount=0;
@@ -1392,7 +1327,7 @@ void ramp_initial(void)
 		      rc1.SetpointValue=0;
 		      rc1.TargetValue=0;
 
-		      rc2.RampDelayMax = 5;
+		      rc2.RampDelayMax = 2;
 		      rc2.RampLowLimit = _IQ(0);//0
 		      rc2.RampHighLimit = _IQ(1);
 		      rc2.RampDelayCount=0;
@@ -1469,67 +1404,94 @@ void ramp_initial(void)
 }
 
 
-interrupt void i2c_int1a_isr(void)     // I2C-A
+//interrupt void i2c_int1a_isr(void)     // I2C-A
+//{
+//	i2c_isr_ticker++;
+//	Uint16 IntSource, i;
+//
+//	// Read interrupt source
+//	IntSource = I2caRegs.I2CISRC.all;
+//
+//	// Interrupt source = stop condition detected
+//	if (IntSource == I2C_SCD_ISRC) {
+//		// If completed message was writing data, reset msg to inactive state
+//		if (CurrentMsgPtr->MsgStatus == I2C_MSGSTAT_WRITE_BUSY) {
+//			CurrentMsgPtr->MsgStatus = I2C_MSGSTAT_INACTIVE;
+//		}
+//		else {
+//			// If a message receives a NACK during the address setup portion of the
+//			// EEPROM read, the code further below included in the register access ready
+//			// interrupt source code will generate a stop condition. After the stop
+//			// condition is received (here), set the message status to try again.
+//			// User may want to limit the number of retries before generating an error.
+//			if (CurrentMsgPtr->MsgStatus == I2C_MSGSTAT_SEND_NOSTOP_BUSY) {
+//				CurrentMsgPtr->MsgStatus = I2C_MSGSTAT_SEND_NOSTOP;
+//			}
+//			// If completed message was reading EEPROM data, reset msg to inactive state
+//			// and read data from FIFO.
+//			else if (CurrentMsgPtr->MsgStatus == I2C_MSGSTAT_READ_BUSY) {
+//				CurrentMsgPtr->MsgStatus = I2C_MSGSTAT_INACTIVE;
+//				for (i = 0; i < I2C_NUMBYTES; i++) {
+//					CurrentMsgPtr->MsgBuffer[i] = I2caRegs.I2CDRR;
+//				}
+//				//transfer the buffer's date into gravity force
+//
+//			}
+//		}
+//	}  // end of stop condition detected
+//
+//	// Interrupt source = Register Access Ready
+//	// This interrupt is used to determine when the EEPROM address setup portion of the
+//	// read data communication is complete. Since no stop bit is commanded, this flag
+//	// tells us when the message has been sent instead of the SCD flag. If a NACK is
+//	// received, clear the NACK bit and command a stop. Otherwise, move on to the read
+//	// data portion of the communication.
+//	else if (IntSource == I2C_ARDY_ISRC) {
+//		if (I2caRegs.I2CSTR.bit.NACK == 1) {
+//			I2caRegs.I2CMDR.bit.STP = 1;
+//			I2caRegs.I2CSTR.all = I2C_CLR_NACK_BIT;
+//		} else if (CurrentMsgPtr->MsgStatus == I2C_MSGSTAT_SEND_NOSTOP_BUSY) {
+//			CurrentMsgPtr->MsgStatus = I2C_MSGSTAT_RESTART;
+//		}
+//	}  // end of register access ready
+//
+//	else {
+//		// Generate some error due to invalid interrupt source
+//		__asm("   ESTOP0");
+//	}
+//
+//	// Enable future I2C (PIE Group 8) interrupts
+//	PieCtrlRegs.PIEACK.all = PIEACK_GROUP8;
+//}
+
+void Servo_epwm_initial(void)
 {
-	i2c_isr_ticker++;
-	Uint16 IntSource, i;
+	// ePWM7 register configuration with HRPWM
+		// ePWM7A toggle low/high with MEP control on Rising edge
+	EALLOW;
+	EPwm7Regs.TBCTL.bit.PRDLD = TB_IMMEDIATE; // set Immediate load
+	EPwm7Regs.TBPRD = 50000-1;      //period=50000 PWM frequency = 1 / period
+	EPwm7Regs.CMPA.half.CMPA =49600;  //Compare to the TBCLK, SET MOTOR A T CENTER POSITION
+	EPwm7Regs.CMPB = 49600;	              //Compare to the TBCLK
+	EPwm7Regs.TBPHS.all = 0;
+	EPwm7Regs.TBCTR = 0;
+	EDIS;
+	EPwm7Regs.TBCTL.bit.CTRMODE = TB_COUNT_UP; //THE CBCLK is up-count mode
+	EPwm7Regs.TBCTL.bit.PHSEN = TB_DISABLE;		       // EPwm1 is the Master
+	EPwm7Regs.TBCTL.bit.SYNCOSEL = TB_SYNC_DISABLE;
+	EPwm7Regs.TBCTL.bit.HSPCLKDIV = TB_DIV5;//divide /6  計時和SYSCLKOUT的比率
+	EPwm7Regs.TBCTL.bit.CLKDIV = TB_DIV4;//divide /4
+	//Since the TBCLK=SYSCLK/( HSPCLKDIV* CLKDIV), so TBCLK=(6*4)/60MHz
+	EPwm7Regs.CMPCTL.bit.LOADAMODE = CC_CTR_ZERO;
+	EPwm7Regs.CMPCTL.bit.LOADBMODE = CC_CTR_ZERO;
+	EPwm7Regs.CMPCTL.bit.SHDWAMODE = CC_SHADOW;
+	EPwm7Regs.CMPCTL.bit.SHDWBMODE = CC_SHADOW;
+	EPwm7Regs.AQCTLA.bit.ZRO =AQ_CLEAR;          // PWM toggle low/high
+	EPwm7Regs.AQCTLA.bit.CAU =AQ_SET;
+	EPwm7Regs.AQCTLB.bit.ZRO = AQ_CLEAR;
+	EPwm7Regs.AQCTLB.bit.CBU = AQ_SET;
 
-	// Read interrupt source
-	IntSource = I2caRegs.I2CISRC.all;
-
-	// Interrupt source = stop condition detected
-	if (IntSource == I2C_SCD_ISRC) {
-		// If completed message was writing data, reset msg to inactive state
-		if (CurrentMsgPtr->MsgStatus == I2C_MSGSTAT_WRITE_BUSY) {
-			CurrentMsgPtr->MsgStatus = I2C_MSGSTAT_INACTIVE;
-		}
-		else {
-			// If a message receives a NACK during the address setup portion of the
-			// EEPROM read, the code further below included in the register access ready
-			// interrupt source code will generate a stop condition. After the stop
-			// condition is received (here), set the message status to try again.
-			// User may want to limit the number of retries before generating an error.
-			if (CurrentMsgPtr->MsgStatus == I2C_MSGSTAT_SEND_NOSTOP_BUSY) {
-				CurrentMsgPtr->MsgStatus = I2C_MSGSTAT_SEND_NOSTOP;
-			}
-			// If completed message was reading EEPROM data, reset msg to inactive state
-			// and read data from FIFO.
-			else if (CurrentMsgPtr->MsgStatus == I2C_MSGSTAT_READ_BUSY) {
-				CurrentMsgPtr->MsgStatus = I2C_MSGSTAT_INACTIVE;
-				for (i = 0; i < I2C_NUMBYTES; i++) {
-					CurrentMsgPtr->MsgBuffer[i] = I2caRegs.I2CDRR;
-				}
-				//transfer the buffer's date into gravity force
-
-			}
-		}
-	}  // end of stop condition detected
-
-	// Interrupt source = Register Access Ready
-	// This interrupt is used to determine when the EEPROM address setup portion of the
-	// read data communication is complete. Since no stop bit is commanded, this flag
-	// tells us when the message has been sent instead of the SCD flag. If a NACK is
-	// received, clear the NACK bit and command a stop. Otherwise, move on to the read
-	// data portion of the communication.
-	else if (IntSource == I2C_ARDY_ISRC) {
-		if (I2caRegs.I2CSTR.bit.NACK == 1) {
-			I2caRegs.I2CMDR.bit.STP = 1;
-			I2caRegs.I2CSTR.all = I2C_CLR_NACK_BIT;
-		} else if (CurrentMsgPtr->MsgStatus == I2C_MSGSTAT_SEND_NOSTOP_BUSY) {
-			CurrentMsgPtr->MsgStatus = I2C_MSGSTAT_RESTART;
-		}
-	}  // end of register access ready
-
-	else {
-		// Generate some error due to invalid interrupt source
-		__asm("   ESTOP0");
-	}
-
-	// Enable future I2C (PIE Group 8) interrupts
-	PieCtrlRegs.PIEACK.all = PIEACK_GROUP8;
 }
-
-
 //===========================================================================
 // No more.
 //===========================================================================

@@ -46,8 +46,8 @@ This line sets the BUILDLEVEL to one of the available choices.
 #define PWM_FREQUENCY 20
 
 // Parameter Initializations 
-#define ALIGN_DUTY  0x700
-#define LOOP_CNT_MAX 5
+#define ALIGN_DUTY  0x500
+#define LOOP_CNT_MAX 2
 
 // This machine parameters are based on BLDC motor
 // Define the BLDC motor parameters 
@@ -64,7 +64,7 @@ This line sets the BUILDLEVEL to one of the available choices.
 #define BASE_CURRENT    10            // Base peak phase current (amp)
 #define BASE_TORQUE     		      // Base torque (N.m)
 #define BASE_FLUX              		  // Base flux linkage (volt.sec/rad)
-#define BASE_FREQ      	700           // Base electrical frequency (Hz) for 57bl100 100, for 120w motor is 200
+#define BASE_FREQ      	700 //6000rpm  //816//7000rpm           // Base electrical frequency (Hz) for 57bl100 100, for 120w motor is 200
 
 #endif
 
